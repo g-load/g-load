@@ -1,59 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Acceleration Graph</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/charts/loader.js"></script>
-</head>
-<body>
-    <h2>Real-Time Acceleration Graph</h2>
-    <div id="chart_div" style="width: 100%; height: 500px;"></div>
-
+<html>
+  <head>
+    <title>Acceleration Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      #chart_div {
+        width: 800px;
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Acceleration Monitoring Dashboard</h1>
+    <div id="chart_div">
+      <canvas id="chart"></canvas>
+    </div>
     <script>
-        // Firebase Configuration
-        var firebaseConfig = {
-            apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
+      // Firebase configuration
+      const firebaseConfig = {
+          apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
   authDomain: "gload-9bbb7.firebaseapp.com",
   databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "gload-9bbb7",
   storageBucket: "gload-9bbb7.firebasestorage.app",
   messagingSenderId: "906599077982",
   appId: "1:906599077982:web:c40399c0ff5f789abf3ccf"
+      };
 
-                   };
-        firebase.initializeApp(firebaseConfig);
-        
-        // Load Google Charts
-        google.charts.load('current', {'packages':['corechart']});
-        google.charts.setOnLoadCallback(drawChart);
-        
-        var data = [['Time', 'X Acceleration']];
-        
-        function drawChart() {
-            var chartData = google.visualization.arrayToDataTable(data);
-            
-            var options = {
-                title: 'Acceleration (X-Axis)',
-                curveType: 'function',
-                legend: { position: 'bottom' },
-                hAxis: { title: 'Time' },
-                vAxis: { title: 'Acceleration (g)' }
-            };
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
 
-            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            chart.draw(chartData, options);
+      // Get a reference to the database
+      const db = firebase.database();
+
+      // Get a reference to the chart
+      const ctx = document.getElementById("chart").getContext("2d");
+
+      // Create a new chart
+      const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Acceleration (g)",
+              data: [],
+              backgroundColor: "rgba(255, 99, 132, 0.2)",
+              borderColor: "rgba(255, 99, 132, 1)",
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
         }
+      });
 
-        firebase.database().ref('/MPU6050/X_Axis').on('value', function(snapshot) {
-            var x_accel = snapshot.val();
-            var now = new Date().toLocaleTimeString();
-            data.push([now, x_accel]);
-            if (data.length > 20) data.shift(); // Keep recent 20 data points
-            drawChart();
-        });
+      // Listen for changes to the acceleration data
+      db.ref("/MPU6050/X_Axis").on("value", (data) => {
+        const acceleration = data.val();
+        console.log(`Acceleration: ${acceleration} g`);
+
+        // Update the chart
+        chart.data.labels.push(new Date().toLocaleTimeString());
+        chart.data.datasets[0].data.push(acceleration);
+        chart.update();
+      });
     </script>
-</body>
+  </body>
 </html>
