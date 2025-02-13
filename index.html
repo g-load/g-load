@@ -1,0 +1,36 @@
+<script type="module">
+    // ✅ Import Firebase Modules (ES6 syntax for Firebase v9+)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    // ✅ Firebase Configuration
+    const firebaseConfig = {
+  apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
+  authDomain: "gload-9bbb7.firebaseapp.com",
+  databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "gload-9bbb7",
+  storageBucket: "gload-9bbb7.firebasestorage.app",
+  messagingSenderId: "906599077982",
+  appId: "1:906599077982:web:c40399c0ff5f789abf3ccf"
+
+};
+
+    // ✅ Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // ✅ Real-Time Data Fetching
+    const dbRef = ref(database, "/mpu6050");
+    onValue(dbRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            document.getElementById("dataDisplay").innerText = Acceleration: ${data.accelerationX.toFixed(2)} g;
+            document.getElementById("timestamp").innerText = Timestamp: ${new Date(data.timestamp * 1000).toLocaleString()};
+
+            // ✅ Update Graph
+            updateChart(data.accelerationX.toFixed(2));
+        } else {
+            document.getElementById("dataDisplay").innerText = "No data available";
+        }
+    });
+</script>
