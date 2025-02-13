@@ -30,16 +30,15 @@
 
     <script>
         // Firebase Configuration (UPDATE with your credentials)
-      const firebaseConfig = {
-  apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
-  authDomain: "gload-9bbb7.firebaseapp.com",
-  databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "gload-9bbb7",
-  storageBucket: "gload-9bbb7.firebasestorage.app",
-  messagingSenderId: "906599077982",
-  appId: "1:906599077982:web:c40399c0ff5f789abf3ccf"
-
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
+            authDomain: "gload-9bbb7.firebaseapp.com",
+            databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "gload-9bbb7",
+            storageBucket: "gload-9bbb7.firebasestorage.app",
+            messagingSenderId: "906599077982",
+            appId: "1:906599077982:web:c40399c0ff5f789abf3ccf"
+        };
        
         firebase.initializeApp(firebaseConfig);
         var database = firebase.database();
@@ -69,8 +68,8 @@
                 if (snapshot.exists()) {
                     chartData = [['Timestamp', 'Acceleration (g)']];
                     snapshot.forEach(function(childSnapshot) {
-                        var timestamp = new Date(parseInt(childSnapshot.key)).toLocaleTimeString();
-                        var value = childSnapshot.val();
+                        var timestamp = new Date(parseInt(childSnapshot.key)); // Use Date object
+                        var value = parseFloat(childSnapshot.val()); // Ensure it's a number
                         chartData.push([timestamp, value]);
                     });
                     drawChart();
@@ -90,7 +89,6 @@
                 }
             });
         }
-
         document.getElementById("refresh").addEventListener("click", function() {
             fetchData();
         });
@@ -100,7 +98,7 @@
                 if (snapshot.exists()) {
                     var ws_data = [["Timestamp", "Acceleration (g)"]];
                     snapshot.forEach(function(childSnapshot) {
-                        ws_data.push([new Date(parseInt(childSnapshot.key)).toLocaleString(), childSnapshot.val()]);
+                        ws_data.push([new Date(parseInt(childSnapshot.key)).toLocaleString(), parseFloat(childSnapshot.val())]);
                     });
                     var wb = XLSX.utils.book_new();
                     var ws = XLSX.utils.aoa_to_sheet(ws_data);
