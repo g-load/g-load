@@ -15,13 +15,14 @@
   </head>
   <body>
     <h1>Acceleration Monitoring Dashboard</h1>
+    <h2>Real-time Acceleration: <span id="acceleration-value">0.00</span> g</h2>
     <div id="chart_div">
       <canvas id="chart"></canvas>
     </div>
     <script>
       // Firebase configuration
       const firebaseConfig = {
-          apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
+       apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
   authDomain: "gload-9bbb7.firebaseapp.com",
   databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "gload-9bbb7",
@@ -72,6 +73,9 @@
         chart.data.labels.push(new Date().toLocaleTimeString());
         chart.data.datasets[0].data.push(acceleration);
         chart.update();
+
+        // Update the real-time acceleration value
+        document.getElementById("acceleration-value").innerText = acceleration.toFixed(2);
       });
     </script>
   </body>
