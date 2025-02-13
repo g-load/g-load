@@ -1,19 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>MPU6050 Acceleration Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Acceleration Graph</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
 </head>
 <body>
-  <h2>Real-Time MPU6050 Acceleration Data</h2>
-  <div id="chart_div" style="width: 800px; height: 500px;"></div>
-  <button onclick="downloadExcel()">Download Data</button>
+    <h2>Real-Time Acceleration Graph</h2>
+    <div id="chart_div" style="width: 100%; height: 500px;"></div>
 
-  <script>
-   const firebaseConfig = {
-  apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
+    <script>
+        // Firebase Configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
   authDomain: "gload-9bbb7.firebaseapp.com",
   databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "gload-9bbb7",
@@ -21,41 +23,37 @@
   messagingSenderId: "906599077982",
   appId: "1:906599077982:web:c40399c0ff5f789abf3ccf"
 
-};
+                   };
+        firebase.initializeApp(firebaseConfig);
+        
+        // Load Google Charts
+        google.charts.load('current', {'packages':['corechart']});
+        google.charts.setOnLoadCallback(drawChart);
+        
+        var data = [['Time', 'X Acceleration']];
+        
+        function drawChart() {
+            var chartData = google.visualization.arrayToDataTable(data);
+            
+            var options = {
+                title: 'Acceleration (X-Axis)',
+                curveType: 'function',
+                legend: { position: 'bottom' },
+                hAxis: { title: 'Time' },
+                vAxis: { title: 'Acceleration (g)' }
+            };
 
+            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+            chart.draw(chartData, options);
+        }
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("/acceleration");
-
-    google.charts.load('current', {'packages':['corechart']});
-    google.charts.setOnLoadCallback(drawChart);
-
-    let dataArr = [['Time', 'X-Axis (g)']];
-
-    function drawChart() {
-      var data = google.visualization.arrayToDataTable(dataArr);
-      var options = { title: 'MPU6050 Acceleration', curveType: 'function', legend: { position: 'bottom' } };
-      var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-      chart.draw(data, options);
-    }
-
-    db.on("child_added", function(snapshot) {
-      let timestamp = new Date(parseInt(snapshot.key)).toLocaleTimeString();
-      let xAxis = snapshot.val().x;
-      dataArr.push([timestamp, xAxis]);
-      drawChart();
-    });
-
-    function downloadExcel() {
-      let csvContent = "data:text/csv;charset=utf-8,Time,X-Axis (g)\n";
-      dataArr.slice(1).forEach(row => { csvContent += row.join(",") + "\n"; });
-      let encodedUri = encodeURI(csvContent);
-      let link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "mpu6050_acceleration_data.csv");
-      document.body.appendChild(link);
-      link.click();
-    }
-  </script>
+        firebase.database().ref('/MPU6050/X_Axis').on('value', function(snapshot) {
+            var x_accel = snapshot.val();
+            var now = new Date().toLocaleTimeString();
+            data.push([now, x_accel]);
+            if (data.length > 20) data.shift(); // Keep recent 20 data points
+            drawChart();
+        });
+    </script>
 </body>
 </html>
