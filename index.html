@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Acceleration Data</title>
+    <title>Real-Time & Historical Acceleration Data</title>
     
     <!-- ✅ Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -17,12 +17,20 @@
         h2 { color: #333; }
         #acceleration { font-size: 24px; font-weight: bold; color: blue; }
         #chart_div { width: 100%; height: 400px; margin-top: 20px; }
+        #historySelector { margin-top: 15px; padding: 5px; }
     </style>
 </head>
 <body>
 
-    <h2>Real-Time Acceleration (X-Axis)</h2>
+    <h2>Real-Time & Historical Acceleration (X-Axis)</h2>
     <p>Current Acceleration: <span id="acceleration">Loading...</span> g</p>
+    
+    <!-- Dropdown to Select Historical Data -->
+    <label for="historySelector">View Data from:</label>
+    <select id="historySelector" onchange="fetchHistoricalData()">
+        <option value="latest">Latest (Live)</option>
+    </select>
+
     <div id="chart_div"></div>
 
     <script>
@@ -53,7 +61,7 @@
             chartData.addColumn('number', 'Acceleration (g)');
 
             options = {
-                title: 'Real-Time Acceleration Data',
+                title: 'Acceleration Data (Real-Time & Historical)',
                 curveType: 'function',
                 legend: { position: 'bottom' },
                 hAxis: { title: 'Time' },
@@ -62,34 +70,85 @@
             };
 
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            fetchRealTimeData();
+
+            fetchHistoricalTimestamps(); // Load history dropdown
+            fetchRealTimeData(); // Start real-time data streaming
         }
 
         function fetchRealTimeData() {
             const ref = database.ref("/acceleration_data");
 
             ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
-                console.log("Snapshot received:", snapshot.val());
+                console.log("✅ Real-time Data Received:", snapshot.val());
+
+                if (!snapshot.exists()) {
+                    console.error("❌ No data found in Firebase!");
+                    return;
+                }
 
                 chartData.removeRows(0, chartData.getNumberOfRows());
 
                 snapshot.forEach(childSnapshot => {
                     const entry = childSnapshot.val();
-                    
-                    if (!entry  !entry.timestamp  !entry.acceleration_g) {
-                        console.error("Invalid data:", entry);
-                        return;
-                    }
+                    if (!entry  entry.acceleration_g === undefined  entry.timestamp === undefined) return;
 
-                    let timestampUTC = new Date(entry.timestamp);
-                    let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
-
-                    console.log("UTC:", timestampUTC, "IST:", timestampIST);
+                    let timestampIST = new Date(entry.timestamp + (5.5 * 60 * 60 * 1000));
 
                     chartData.addRow([timestampIST, entry.acceleration_g]);
                     document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
                 });
 
+                chart.draw(chartData, options);
+            });
+        }
+
+        function fetchHistoricalTimestamps() {
+            const ref = database.ref("/acceleration_data");
+
+amałraĵ, [15-02-2025 11:03 PM]
+ref.once('value', (snapshot) => {
+                if (!snapshot.exists()) return;
+                
+                let historyDropdown = document.getElementById("historySelector");
+                historyDropdown.innerHTML = <option value="latest">Latest (Live)</option>;
+
+                snapshot.forEach(childSnapshot => {
+                    let timestamp = childSnapshot.key;
+                    let timestampIST = new Date(parseInt(timestamp) + (5.5 * 60 * 60 * 1000));
+
+                    let formattedDate = timestampIST.toLocaleString();
+                    let option = document.createElement("option");
+                    option.value = timestamp;
+                    option.textContent = 📅 ${formattedDate};
+                    historyDropdown.appendChild(option);
+                });
+            });
+        }
+
+        function fetchHistoricalData() {
+            let selectedTimestamp = document.getElementById("historySelector").value;
+            if (selectedTimestamp === "latest") {
+                fetchRealTimeData(); // Switch back to real-time data
+                return;
+            }
+
+            const ref = database.ref("/acceleration_data/" + selectedTimestamp);
+
+            ref.once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    console.error("❌ No historical data found!");
+                    return;
+                }
+
+                let entry = snapshot.val();
+                if (!entry  entry.acceleration_g === undefined  entry.timestamp === undefined) return;
+
+                let timestampIST = new Date(entry.timestamp + (5.5 * 60 * 60 * 1000));
+
+                chartData.removeRows(0, chartData.getNumberOfRows());
+                chartData.addRow([timestampIST, entry.acceleration_g]);
+
+                document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
                 chart.draw(chartData, options);
             });
         }
