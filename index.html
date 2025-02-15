@@ -1,25 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Real-time Acceleration Graph</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <title>Real-time Acceleration Data</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #acceleration { font-size: 20px; margin-top: 20px; }
-        #chart_div { width: 100%; height: 400px; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #accel-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #chart_div {
+            width: 80%;
+            height: 400px;
+            margin: auto;
+        }
     </style>
 </head>
 <body>
 
     <h2>Real-time Acceleration Monitoring</h2>
-    <p id="acceleration">Loading...</p>
+    <p>Current Acceleration (X-axis): <span id="accel-value">0</span> g</p>
     <div id="chart_div"></div>
 
     <script>
         // Firebase Configuration
-        const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -32,50 +42,40 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        console.log("Firebase initialized successfully");
 
         // Google Charts Setup
-        google.charts.load('current', {packages: ['corechart', 'line']});
+        google.charts.load('current', { 'packages': ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawChart);
 
         let data = new google.visualization.DataTable();
-        data.addColumn('datetime', 'Time');
+        data.addColumn('string', 'Time');
         data.addColumn('number', 'Acceleration (g)');
 
         function drawChart() {
             var options = {
-                title: 'Real-time Acceleration Data',
+                title: 'Real-time Acceleration Graph',
                 curveType: 'function',
                 legend: { position: 'bottom' },
                 hAxis: { title: 'Time' },
-                vAxis: { title: 'Acceleration (g)' },
-                colors: ['#1b9e77']
+                vAxis: { title: 'Acceleration (g)', minValue: 0, maxValue: 2 }
             };
+
             var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-          database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
-    if (!snapshot.exists()) {
-        console.warn("⚠️ No acceleration data found.");
-        return;
-    }
+            // Fetch Data from Firebase
+            database.ref('/acceleration').on('value', (snapshot) => {
+                let accelValue = snapshot.val().x || 0;
+                let timestamp = new Date().toLocaleTimeString();
 
-    data.removeRows(0, data.getNumberOfRows());
+                document.getElementById('accel-value').innerText = accelValue;
 
-    snapshot.forEach((childSnapshot) => {
-        let entry = childSnapshot.val();
-        let time = new Date(entry.timestamp);  // Ensure correct timestamp format
-        let acceleration = entry.acceleration_g;
+                data.addRow([timestamp, accelValue]);
+                if (data.getNumberOfRows() > 20) data.removeRow(0); // Keep recent 20 values
 
-        console.log(⏳ Time: ${time}, Acceleration: ${acceleration}g);
-
-        data.addRow([time, acceleration]);
-        document.getElementById("acceleration").innerHTML = 
-            Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
-    });
-
-    chart.draw(data, options);
-});
+                chart.draw(data, options);
+            });
         }
     </script>
+
 </body>
 </html>
