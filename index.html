@@ -3,38 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time & Historical Acceleration Data</title>
-    
-    <!-- ✅ Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <title>Real-time & Historical Acceleration Data</title>
 
-    <!-- ✅ Google Charts -->
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <!-- Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    
+
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        h2 { color: #333; }
-        #acceleration { font-size: 24px; font-weight: bold; color: blue; }
+        #time { font-size: 20px; margin-bottom: 10px; }
+        #acceleration { font-size: 24px; font-weight: bold; }
+        .container { width: 90%; margin: auto; }
         #chart_div { width: 100%; height: 400px; margin-top: 20px; }
-        #historySelector { margin-top: 15px; padding: 5px; }
+        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <h2>Real-Time & Historical Acceleration (X-Axis)</h2>
-    <p>Current Acceleration: <span id="acceleration">Loading...</span> g</p>
+    <h2>Real-time & Historical Acceleration Data</h2>
+    <div id="time">IST Time: Loading...</div>
+    <div id="acceleration">Current Acceleration: 0.00 g</div>
     
-    <!-- Dropdown to Select Historical Data -->
-    <label for="historySelector">View Data from:</label>
-    <select id="historySelector" onchange="fetchHistoricalData()">
-        <option value="latest">Latest (Live)</option>
-    </select>
-
-    <div id="chart_div"></div>
+    <div class="container">
+        <div id="chart_div"></div>
+        <button onclick="fetchHistoricalData()">Load Historical Data</button>
+    </div>
 
     <script>
-        // ✅ Firebase Configuration
+        // Firebase Configuration (Replace with your details)
         const firebaseConfig = {
            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
@@ -42,116 +41,102 @@
   projectId: "g-load-dc40b",
   storageBucket: "g-load-dc40b.firebasestorage.app",
   messagingSenderId: "589491451732",
-  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+  appId: "1:589491451732:web:b36abd93b770651dfd7ac1" 
         };
 
-        // ✅ Initialize Firebase
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // ✅ Load Google Charts
+        // Load Google Charts
         google.charts.load('current', { packages: ['corechart', 'line'] });
-        google.charts.setOnLoadCallback(drawChart);
+        google.charts.setOnLoadCallback(initChart);
 
-        let chartData, chart, options;
+        let data, chart, options;
+        let dataPoints = [];
 
-        function drawChart() {
-            chartData = new google.visualization.DataTable();
-            chartData.addColumn('datetime', 'Time');
-            chartData.addColumn('number', 'Acceleration (g)');
+        function initChart() {
+            data = new google.visualization.DataTable();
+            data.addColumn('datetime', 'Time (IST)');
+            data.addColumn('number', 'Acceleration (g)');
 
             options = {
-                title: 'Acceleration Data (Real-Time & Historical)',
+                title: 'Acceleration Data (Real-time & Historical)',
                 curveType: 'function',
                 legend: { position: 'bottom' },
-                hAxis: { title: 'Time' },
-                vAxis: { title: 'Acceleration (g)', minValue: 0 },
-                backgroundColor: '#f5f5f5'
+                hAxis: { title: 'Time (IST)', format: 'hh:mm:ss a', gridlines: { count: 10 } },
+                vAxis: { title: 'Acceleration (g)' },
+                width: '100%',
+                height: 400
             };
 
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-
-            fetchHistoricalTimestamps(); // Load history dropdown
-            fetchRealTimeData(); // Start real-time data streaming
+            drawChart();
         }
 
-        function fetchRealTimeData() {
-            const ref = database.ref("/acceleration_data");
+        function drawChart() {
+            chart.draw(data, options);
+        }
 
-            ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
-                console.log("✅ Real-time Data Received:", snapshot.val());
+        // Convert time to IST
+        function getISTTime(timestamp) {
+            return new Date(new Date(timestamp).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+        }
 
-                if (!snapshot.exists()) {
-                    console.error("❌ No data found in Firebase!");
-                    return;
+        // Fetch latest real-time data
+        database.ref('acceleration_data').limitToLast(1).on('child_added', snapshot => {
+            const value = snapshot.val();
+            if (value) {
+                const acceleration = value.acceleration_g;
+                const istTime = getISTTime(value.timestamp);
+
+                document.getElementById('acceleration').innerHTML = `Current Acceleration: ${acceleration.toFixed(2)} g`;
+
+                dataPoints.push([istTime, acceleration]);
+
+                if (dataPoints.length > 20) {
+                    dataPoints.shift(); // Keep only the latest 20 data points
                 }
 
-                chartData.removeRows(0, chartData.getNumberOfRows());
-
-                snapshot.forEach(childSnapshot => {
-                    const entry = childSnapshot.val();
-                    if (!entry  entry.acceleration_g === undefined  entry.timestamp === undefined) return;
-
-                    let timestampIST = new Date(entry.timestamp + (5.5 * 60 * 60 * 1000));
-
-                    chartData.addRow([timestampIST, entry.acceleration_g]);
-                    document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
-                });
-
-                chart.draw(chartData, options);
-            });
-        }
-
-        function fetchHistoricalTimestamps() {
-            const ref = database.ref("/acceleration_data");
-
-amałraĵ, [15-02-2025 11:03 PM]
-ref.once('value', (snapshot) => {
-                if (!snapshot.exists()) return;
-                
-                let historyDropdown = document.getElementById("historySelector");
-                historyDropdown.innerHTML = <option value="latest">Latest (Live)</option>;
-
-                snapshot.forEach(childSnapshot => {
-                    let timestamp = childSnapshot.key;
-                    let timestampIST = new Date(parseInt(timestamp) + (5.5 * 60 * 60 * 1000));
-
-                    let formattedDate = timestampIST.toLocaleString();
-                    let option = document.createElement("option");
-                    option.value = timestamp;
-                    option.textContent = 📅 ${formattedDate};
-                    historyDropdown.appendChild(option);
-                });
-            });
-        }
-
-        function fetchHistoricalData() {
-            let selectedTimestamp = document.getElementById("historySelector").value;
-            if (selectedTimestamp === "latest") {
-                fetchRealTimeData(); // Switch back to real-time data
-                return;
+                data.removeRows(0, data.getNumberOfRows());
+                data.addRows(dataPoints);
+                drawChart();
             }
+        });
 
-            const ref = database.ref("/acceleration_data/" + selectedTimestamp);
+        // Fetch historical data
+        function fetchHistoricalData() {
+            database.ref('acceleration_data').once('value', snapshot => {
+                const history = snapshot.val();
+                if (history) {
+                    let historicalData = [];
+                    Object.keys(history).forEach(key => {
+                        const entry = history[key];
+                        const istTime = getISTTime(entry.timestamp);
+                        historicalData.push([istTime, entry.acceleration_g]);
+                    });
 
-            ref.once('value', (snapshot) => {
-                if (!snapshot.exists()) {
-                    console.error("❌ No historical data found!");
-                    return;
+                    // Merge historical data with real-time data
+                    dataPoints = [...historicalData, ...dataPoints];
+
+                    // Remove duplicates
+                    const uniqueData = Array.from(new Map(dataPoints.map(item => [item[0].getTime(), item])).values());
+
+                    data.removeRows(0, data.getNumberOfRows());
+                    data.addRows(uniqueData);
+                    drawChart();
                 }
-
-                let entry = snapshot.val();
-                if (!entry  entry.acceleration_g === undefined  entry.timestamp === undefined) return;
-
-                let timestampIST = new Date(entry.timestamp + (5.5 * 60 * 60 * 1000));
-
-                chartData.removeRows(0, chartData.getNumberOfRows());
-                chartData.addRow([timestampIST, entry.acceleration_g]);
-
-                document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
-                chart.draw(chartData, options);
             });
         }
+
+        // Display Indian Standard Time (IST)
+        function updateISTTime() {
+            const istNow = getISTTime(Date.now());
+            const formattedTime = istNow.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            document.getElementById('time').innerHTML = `IST Time: ${formattedTime}`;
+        }
+        setInterval(updateISTTime, 1000);
+
     </script>
 
 </body>
