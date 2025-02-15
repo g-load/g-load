@@ -29,7 +29,8 @@
     
     <div class="container">
         <div id="chart_div"></div>
-        <button onclick="fetchHistoricalData()">Load Historical Data (Last 24h)</button>
+        <input type="date" id="datePicker">
+        <button onclick="fetchHistoricalData()">Load Data for Selected Date</button>
     </div>
 
     <script>
@@ -78,7 +79,7 @@
             chart.draw(data, options);
         }
 
-        // Convert time to IST
+        // Convert timestamp to IST
         function getISTTime(timestamp) {
             return new Date(new Date(timestamp).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
         }
@@ -104,11 +105,18 @@
             }
         });
 
-        // Fetch historical data (Last 24 Hours)
+        // Fetch historical data based on selected date
         function fetchHistoricalData() {
-            const last24HoursTimestamp = Date.now() - (24 * 60 * 60 * 1000); // Current time - 24 hours
+            const selectedDate = document.getElementById('datePicker').value;
+            if (!selectedDate) {
+                alert("Please select a date.");
+                return;
+            }
 
-            database.ref('acceleration_data').orderByKey().startAt(String(last24HoursTimestamp)).once('value', snapshot => {
+            const startOfDay = new Date(selectedDate).setHours(0, 0, 0, 0);
+            const endOfDay = new Date(selectedDate).setHours(23, 59, 59, 999);
+
+            database.ref('acceleration_data').orderByKey().startAt(String(startOfDay)).endAt(String(endOfDay)).once('value', snapshot => {
                 const history = snapshot.val();
                 if (history) {
                     let historicalData = [];
@@ -127,6 +135,8 @@
                     data.removeRows(0, data.getNumberOfRows());
                     data.addRows(uniqueData);
                     drawChart();
+                } else {
+                    alert("No data found for the selected date.");
                 }
             });
         }
