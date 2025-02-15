@@ -2,8 +2,8 @@
 <html>
 <head>
     <title>Real-time Acceleration Data</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         body {
@@ -28,7 +28,7 @@
     <div id="chart_div"></div>
 
     <script>
-        // Firebase Configuration
+        // ✅ Use Firebase Compatibility Mode
        const firebaseConfig = {
   apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
@@ -39,11 +39,11 @@
   appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
-        // Initialize Firebase
+        // ✅ Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Google Charts Setup
+        // ✅ Load Google Charts
         google.charts.load('current', { 'packages': ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawChart);
 
@@ -62,17 +62,20 @@
 
             var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-            // Fetch Data from Firebase
+            // ✅ Fetch Data from Firebase (Fixing ReferenceError)
             database.ref('/acceleration').on('value', (snapshot) => {
-                let accelValue = snapshot.val().x || 0;
-                let timestamp = new Date().toLocaleTimeString();
+                let accelData = snapshot.val();
+                if (accelData) {
+                    let accelValue = accelData.x || 0;
+                    let timestamp = new Date().toLocaleTimeString();
 
-                document.getElementById('accel-value').innerText = accelValue;
+                    document.getElementById('accel-value').innerText = accelValue;
 
-                data.addRow([timestamp, accelValue]);
-                if (data.getNumberOfRows() > 20) data.removeRow(0); // Keep recent 20 values
+                    data.addRow([timestamp, accelValue]);
+                    if (data.getNumberOfRows() > 20) data.removeRow(0); // Keep recent 20 values
 
-                chart.draw(data, options);
+                    chart.draw(data, options);
+                }
             });
         }
     </script>
