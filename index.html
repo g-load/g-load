@@ -66,7 +66,7 @@
             fetchData(); // Start fetching data
         }
 
-       function fetchData() {
+function fetchData() {
     const ref = database.ref("/acceleration_data");
 
     ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
@@ -74,12 +74,14 @@
 
         snapshot.forEach(childSnapshot => {
             const entry = childSnapshot.val();
-            const timestamp = new Date(entry.timestamp * 1000); // Convert to JS Date
-            const formattedTime = entry.formatted_time; // Read formatted IST time
-
+            
+            // Convert Firebase timestamp (which is in UTC) to IST
+            let timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to JS Date
+            let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000)); // Convert to IST
+            
             const acceleration = entry.acceleration_g;
 
-            data.addRow([timestamp, acceleration]);
+            data.addRow([timestampIST, acceleration]);
             document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
         });
 
