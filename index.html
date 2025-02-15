@@ -1,35 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Real-time Acceleration Data</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <title>Real-time Acceleration Graph</title>
+
+    <!-- Load Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
+    <!-- Load Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        #accel-value {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        #chart_div {
-            width: 80%;
-            height: 400px;
-            margin: auto;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #acceleration { font-size: 20px; margin-top: 20px; }
+        #chart_div { width: 100%; height: 400px; }
     </style>
 </head>
 <body>
 
     <h2>Real-time Acceleration Monitoring</h2>
-    <p>Current Acceleration (X-axis): <span id="accel-value">0</span> g</p>
+    <p id="acceleration">Loading...</p>
     <div id="chart_div"></div>
 
     <script>
-        // ✅ Firebase Configuration (Replace with your actual Firebase details)
-        const firebaseConfig = {
+        // ✅ Step 1: Firebase Configuration
+       const firebaseConfig = {
   apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -39,53 +34,69 @@
   appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
-        // ✅ Initialize Firebase
+        // ✅ Step 2: Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // ✅ Load Google Charts first before using it
+        // ✅ Step 3: Load Google Charts
         google.charts.load('current', { packages: ['corechart', 'line'] });
-        google.charts.setOnLoadCallback(initChart);
 
-        let data;
-        let chart;
-        let options = {
-            title: 'Real-time Acceleration Graph',
-            curveType: 'function',
-            legend: { position: 'bottom' },
-            hAxis: { title: 'Time' },
-            vAxis: { title: 'Acceleration (g)', minValue: 0, maxValue: 2 }
-        };
+        // ✅ Step 4: Ensure Google Charts is loaded before using it
+        google.charts.setOnLoadCallback(initializeChart);
 
-        function initChart() {
-            // ✅ Initialize the DataTable only after Google Charts is loaded
-            data = new google.visualization.DataTable();
-            data.addColumn('string', 'Time');
+        function initializeChart() {
+            console.log("✅ Google Charts Loaded!");
+
+            // Initialize DataTable only after Charts is ready
+            let data = new google.visualization.DataTable();
+            data.addColumn('datetime', 'Time');
             data.addColumn('number', 'Acceleration (g)');
 
-            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-
-            // ✅ Now start fetching data from Firebase
-            fetchDataFromFirebase();
+            // Draw the chart
+            drawChart(data);
         }
 
-        function fetchDataFromFirebase() {
-            database.ref('/acceleration').on('value', (snapshot) => {
-                let accelData = snapshot.val();
-                if (accelData) {
-                    let accelValue = accelData.x || 0;
-                    let timestamp = new Date().toLocaleTimeString();
+        function drawChart(data) {
+            var options = {
+                title: 'Real-time Acceleration Data',
+                curveType: 'function',
+                legend: { position: 'bottom' },
+                hAxis: { title: 'Time' },
+                vAxis: { title: 'Acceleration (g)' },
+                colors: ['#1b9e77']
+            };
+            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-                    document.getElementById('accel-value').innerText = accelValue;
+            console.log("📊 Chart Initialized");
 
-                    data.addRow([timestamp, accelValue]);
-                    if (data.getNumberOfRows() > 20) data.removeRow(0); // Keep recent 20 values
+            // ✅ Step 5: Fetch Real-time Data from Firebase
+            database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
+                console.log("📡 Fetching data from Firebase...");
 
-                    chart.draw(data, options);
+                if (!snapshot.exists()) {
+                    console.warn("⚠️ No acceleration data found.");
+                    return;
                 }
+
+                console.log("✅ Firebase Data Found:", snapshot.val());
+
+                data.removeRows(0, data.getNumberOfRows());
+
+                snapshot.forEach((childSnapshot) => {
+                    let entry = childSnapshot.val();
+                    let time = new Date(entry.timestamp);
+                    let acceleration = entry.acceleration_g;
+
+                    console.log(📊 Data → Time: ${time}, Acceleration: ${acceleration} g);
+
+                    data.addRow([time, acceleration]);
+                    document.getElementById("acceleration").innerHTML = 
+                        Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
+                });
+
+                chart.draw(data, options);
             });
         }
     </script>
-
 </body>
 </html>
