@@ -2,8 +2,8 @@
 <html>
 <head>
     <title>Real-time Acceleration Graph</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; }
@@ -32,6 +32,7 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        console.log("Firebase initialized successfully");
 
         // Google Charts Setup
         google.charts.load('current', {packages: ['corechart', 'line']});
@@ -56,7 +57,7 @@
                 data.removeRows(0, data.getNumberOfRows());
                 snapshot.forEach((childSnapshot) => {
                     let entry = childSnapshot.val();
-                    let time = new Date(entry.timestamp);
+                    let time = new Date(entry.timestamp); // Adjust if needed
                     let acceleration = entry.acceleration_g;
 
                     data.addRow([time, acceleration]);
