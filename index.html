@@ -39,65 +39,54 @@
         var database = firebase.database();
 
         // ✅ Step 3: Load Google Charts
-        google.charts.load('current', { packages: ['corechart', 'line'] });
-        google.charts.setOnLoadCallback(initializeChart);
+     google.charts.load('current', { packages: ['corechart', 'line'] });
 
-        // ✅ Declare DataTable Globally
-        var data;
+google.charts.setOnLoadCallback(function () {
+    console.log("✅ Google Charts Loaded!");
 
-        function initializeChart() {
-            console.log("✅ Google Charts Loaded!");
+    let data = new google.visualization.DataTable();
+    data.addColumn('datetime', 'Time');
+    data.addColumn('number', 'Acceleration (g)');
 
-            data = new google.visualization.DataTable();
-            data.addColumn('datetime', 'Time');
-            data.addColumn('number', 'Acceleration (g)');
+    var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-            drawChart();
+    var options = {
+        title: 'Real-time Acceleration Data',
+        curveType: 'function',
+        legend: { position: 'bottom' },
+        hAxis: { title: 'Time' },
+        vAxis: { title: 'Acceleration (g)' },
+        colors: ['#1b9e77']
+    };
+
+    // ✅ Firebase Listener Inside Chart Load
+    database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
+        console.log("📡 Fetching data from Firebase...");
+
+        if (!snapshot.exists()) {
+            console.warn("⚠️ No acceleration data found.");
+            return;
         }
 
-        function drawChart() {
-            var options = {
-                title: 'Real-time Acceleration Data',
-                curveType: 'function',
-                legend: { position: 'bottom' },
-                hAxis: { title: 'Time' },
-                vAxis: { title: 'Acceleration (g)' },
-                colors: ['#1b9e77']
-            };
+        console.log("✅ Firebase Data Found:", snapshot.val());
 
-            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            console.log("📊 Chart Initialized");
+        data.removeRows(0, data.getNumberOfRows());
 
-            // ✅ Fetch Real-time Data from Firebase
-            database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
-                console.log("📡 Fetching data from Firebase...");
+        snapshot.forEach((childSnapshot) => {
+            let entry = childSnapshot.val();
+            let time = new Date(entry.timestamp);
+            let acceleration = entry.acceleration_g;
 
-                if (!snapshot.exists()) {
-                    console.warn("⚠️ No acceleration data found.");
-                    return;
-                }
+            console.log(📊 Data → Time: ${time}, Acceleration: ${acceleration} g);
 
-                console.log("✅ Firebase Data Found:", snapshot.val());
+            data.addRow([time, acceleration]);
+            document.getElementById("acceleration").innerHTML =
+                Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
+        });
 
-                data.removeRows(0, data.getNumberOfRows());
-
-                snapshot.forEach((childSnapshot) => {
-                    let entry = childSnapshot.val();
-                    let timestamp = entry.timestamp;
-
-                    // Convert millis() timestamp to real Date object
-                    let time = new Date(Date.now() - (performance.now() - timestamp));
-                    let acceleration = entry.acceleration_g;
-
-                    console.log(📊 Data → Time: ${time}, Acceleration: ${acceleration} g);
-
-                    data.addRow([time, acceleration]);
-                    document.getElementById("acceleration").innerHTML = 
-                        Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
-                });
-
-                chart.draw(data, options);
-            });
+        chart.draw(data, options);
+    });
+});
         }
     </script>
 </body>
