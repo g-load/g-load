@@ -29,19 +29,19 @@
     
     <div class="container">
         <div id="chart_div"></div>
-        <button onclick="fetchHistoricalData()">Load Historical Data</button>
+        <button onclick="fetchHistoricalData()">Load Historical Data (Last 24h)</button>
     </div>
 
     <script>
         // Firebase Configuration (Replace with your details)
         const firebaseConfig = {
-           apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "g-load-dc40b",
   storageBucket: "g-load-dc40b.firebasestorage.app",
   messagingSenderId: "589491451732",
-  appId: "1:589491451732:web:b36abd93b770651dfd7ac1" 
+  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // Initialize Firebase
@@ -65,7 +65,7 @@
                 curveType: 'function',
                 legend: { position: 'bottom' },
                 hAxis: { title: 'Time (IST)', format: 'hh:mm:ss a', gridlines: { count: 10 } },
-                vAxis: { title: 'Acceleration (g)' },
+                vAxis: { title: 'Acceleration (g)', minValue: -1, maxValue: 1.5 },
                 width: '100%',
                 height: 400
             };
@@ -104,9 +104,11 @@
             }
         });
 
-        // Fetch historical data
+        // Fetch historical data (Last 24 Hours)
         function fetchHistoricalData() {
-            database.ref('acceleration_data').once('value', snapshot => {
+            const last24HoursTimestamp = Date.now() - (24 * 60 * 60 * 1000); // Current time - 24 hours
+
+            database.ref('acceleration_data').orderByKey().startAt(String(last24HoursTimestamp)).once('value', snapshot => {
                 const history = snapshot.val();
                 if (history) {
                     let historicalData = [];
