@@ -66,24 +66,26 @@
             fetchData(); // Start fetching data
         }
 
-        function fetchData() {
-            const ref = database.ref("/acceleration_data");
+       function fetchData() {
+    const ref = database.ref("/acceleration_data");
 
-            ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
-                data.removeRows(0, data.getNumberOfRows());
+    ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
+        data.removeRows(0, data.getNumberOfRows());
 
-                snapshot.forEach(childSnapshot => {
-                    const entry = childSnapshot.val();
-                    const timestamp = new Date(parseInt(entry.timestamp));
-                    const acceleration = entry.acceleration_g;
+        snapshot.forEach(childSnapshot => {
+            const entry = childSnapshot.val();
+            const timestamp = new Date(entry.timestamp * 1000); // Convert to JS Date
+            const formattedTime = entry.formatted_time; // Read formatted IST time
 
-                    data.addRow([timestamp, acceleration]);
-                    document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
-                });
+            const acceleration = entry.acceleration_g;
 
-                chart.draw(data, options);
-            });
-        }
+            data.addRow([timestamp, acceleration]);
+            document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
+        });
+
+        chart.draw(data, options);
+    });
+}
     </script>
 
 </body>
