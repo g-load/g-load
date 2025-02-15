@@ -10,7 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
-    <!-- Google Charts -->
+    <!-- ✅ Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     
     <style>
@@ -56,7 +56,7 @@
         let historicalData, historicalChart, historicalOptions;
 
         function drawCharts() {
-            // Real-time chart
+            // ✅ Real-time chart setup
             realTimeData = new google.visualization.DataTable();
             realTimeData.addColumn('datetime', 'Time');
             realTimeData.addColumn('number', 'Acceleration (g)');
@@ -73,7 +73,7 @@
             realTimeChart = new google.visualization.LineChart(document.getElementById('chart_div'));
             fetchRealTimeData();
 
-            // Historical data chart
+            // ✅ Historical data chart setup
             historicalData = new google.visualization.DataTable();
             historicalData.addColumn('datetime', 'Time');
             historicalData.addColumn('number', 'Acceleration (g)');
@@ -90,47 +90,30 @@
             historicalChart = new google.visualization.LineChart(document.getElementById('historical_chart_div'));
         }
 
-       function fetchData() {
-    const ref = database.ref("/acceleration_data");
+        function fetchRealTimeData() {
+            const ref = database.ref("/acceleration_data");
 
-    ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
-        data.removeRows(0, data.getNumberOfRows());
+            ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
+                realTimeData.removeRows(0, realTimeData.getNumberOfRows());
 
-        snapshot.forEach(childSnapshot => {
-            const entry = childSnapshot.val();
+amałraĵ, [15-02-2025 10:39 PM]
+snapshot.forEach(childSnapshot => {
+                    const entry = childSnapshot.val();
+                    
+                    let timestampUTC = new Date(entry.timestamp); // Firebase timestamp in milliseconds
+                    let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000)); // Convert to IST
+                    
+                    console.log("UTC Time:", timestampUTC);
+                    console.log("IST Time:", timestampIST);
 
-            // Convert Firebase timestamp (assumed to be in seconds) to JavaScript Date
-            let timestampUTC = new Date(entry.timestamp * 1000);
-            
-            // Get UTC components
-            let hoursUTC = timestampUTC.getUTCHours();
-            let minutesUTC = timestampUTC.getUTCMinutes();
-            let secondsUTC = timestampUTC.getUTCSeconds();
-            
-            // Convert UTC time to IST (UTC +5:30)
-            let hoursIST = hoursUTC + 5;
-            let minutesIST = minutesUTC + 30;
-            
-            // Handle overflow (if minutes go beyond 60)
-            if (minutesIST >= 60) {
-                minutesIST -= 60;
-                hoursIST += 1;
-            }
+                    realTimeData.addRow([timestampIST, entry.acceleration_g]);
+                    document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
+                });
 
-            // Format IST time
-            let timestampIST = new Date(timestampUTC);
-            timestampIST.setHours(hoursIST);
-            timestampIST.setMinutes(minutesIST);
+                realTimeChart.draw(realTimeData, realTimeOptions);
+            });
+        }
 
-            const acceleration = entry.acceleration_g;
-
-            data.addRow([timestampIST, acceleration]);
-            document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
-        });
-
-        chart.draw(data, options);
-    });
-}
         function loadHistoricalData() {
             const selectedDate = document.getElementById('datePicker').value;
             if (!selectedDate) {
@@ -138,8 +121,8 @@
                 return;
             }
 
-            const startTimestamp = new Date(selectedDate + "T00:00:00Z").getTime() / 1000;
-            const endTimestamp = new Date(selectedDate + "T23:59:59Z").getTime() / 1000;
+            const startTimestamp = new Date(selectedDate + "T00:00:00Z").getTime();
+            const endTimestamp = new Date(selectedDate + "T23:59:59Z").getTime();
 
             const ref = database.ref("/acceleration_data");
 
@@ -149,8 +132,11 @@
                 snapshot.forEach(childSnapshot => {
                     const entry = childSnapshot.val();
 
-                    let timestampUTC = new Date(entry.timestamp * 1000);
+                    let timestampUTC = new Date(entry.timestamp);
                     let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
+
+                    console.log("Historical UTC:", timestampUTC);
+                    console.log("Historical IST:", timestampIST);
 
                     historicalData.addRow([timestampIST, entry.acceleration_g]);
                 });
