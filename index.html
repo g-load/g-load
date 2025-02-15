@@ -3,9 +3,9 @@
 <head>
     <title>Real-time Acceleration Graph</title>
 
-    <!-- Load Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <!-- Load Firebase (Use Compatible v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <!-- Load Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
@@ -23,8 +23,8 @@
     <div id="chart_div"></div>
 
     <script>
-        // ✅ Step 1: Firebase Configuration
-       const firebaseConfig = {
+        // ✅ Step 1: Firebase Configuration (Replace with your actual config)
+        const firebaseConfig = {
   apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -36,23 +36,19 @@
 
         // ✅ Step 2: Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        var database = firebase.database();
 
         // ✅ Step 3: Load Google Charts
         google.charts.load('current', { packages: ['corechart', 'line'] });
-
-        // ✅ Step 4: Ensure Google Charts is loaded before using it
         google.charts.setOnLoadCallback(initializeChart);
 
         function initializeChart() {
             console.log("✅ Google Charts Loaded!");
 
-            // Initialize DataTable only after Charts is ready
             let data = new google.visualization.DataTable();
             data.addColumn('datetime', 'Time');
             data.addColumn('number', 'Acceleration (g)');
 
-            // Draw the chart
             drawChart(data);
         }
 
@@ -69,7 +65,7 @@
 
             console.log("📊 Chart Initialized");
 
-            // ✅ Step 5: Fetch Real-time Data from Firebase
+            // ✅ Fetch Real-time Data from Firebase
             database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
                 console.log("📡 Fetching data from Firebase...");
 
