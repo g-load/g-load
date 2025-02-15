@@ -1,4 +1,4 @@
-
+amałraĵ, [15-02-2025 10:49 PM]
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,13 +35,13 @@
     <script>
         // ✅ Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-  authDomain: "g-load-dc40b.firebaseapp.com",
-  databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "g-load-dc40b",
-  storageBucket: "g-load-dc40b.firebasestorage.app",
-  messagingSenderId: "589491451732",
-  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         // ✅ Initialize Firebase
@@ -90,35 +90,36 @@
             historicalChart = new google.visualization.LineChart(document.getElementById('historical_chart_div'));
         }
 
-       function fetchRealTimeData() {
-    const ref = database.ref("/acceleration_data");
+        function fetchRealTimeData() {
+            const ref = database.ref("/acceleration_data");
 
-    ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
-        console.log("Snapshot received:", snapshot.val());  // ✅ Debugging
+            ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
+                console.log("Snapshot received:", snapshot.val());  // ✅ Debugging
 
-        realTimeData.removeRows(0, realTimeData.getNumberOfRows());
+                realTimeData.removeRows(0, realTimeData.getNumberOfRows());
 
-        snapshot.forEach(childSnapshot => {
-            const entry = childSnapshot.val();
-            console.log("Entry:", entry); // ✅ Debugging each entry
-            
-            if (!entry  !entry.timestamp  !entry.acceleration_g) {
-                console.error("Invalid data:", entry);  // ✅ Debugging
-                return;
-            }
+amałraĵ, [15-02-2025 10:49 PM]
+snapshot.forEach(childSnapshot => {
+                    const entry = childSnapshot.val();
+                    console.log("Entry:", entry); // ✅ Debugging each entry
+                    
+                    if (!entry  !entry.timestamp  !entry.acceleration_g) {
+                        console.error("Invalid data:", entry);  // ✅ Debugging
+                        return;
+                    }
 
-            let timestampUTC = new Date(entry.timestamp); 
-            let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000)); 
+                    let timestampUTC = new Date(entry.timestamp); 
+                    let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000)); 
 
-            console.log("UTC:", timestampUTC, "IST:", timestampIST);
+                    console.log("UTC:", timestampUTC, "IST:", timestampIST);
 
-            realTimeData.addRow([timestampIST, entry.acceleration_g]);
-            document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
-        });
+                    realTimeData.addRow([timestampIST, entry.acceleration_g]);
+                    document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
+                });
 
-        realTimeChart.draw(realTimeData, realTimeOptions);
-    });
-}
+                realTimeChart.draw(realTimeData, realTimeOptions);
+            });
+        }
 
         function loadHistoricalData() {
             const selectedDate = document.getElementById('datePicker').value;
