@@ -24,7 +24,7 @@
 
     <script>
         // ✅ Step 1: Firebase Configuration (Replace with your actual config)
-        const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -42,17 +42,20 @@
         google.charts.load('current', { packages: ['corechart', 'line'] });
         google.charts.setOnLoadCallback(initializeChart);
 
+        // ✅ Declare DataTable Globally
+        var data;
+
         function initializeChart() {
             console.log("✅ Google Charts Loaded!");
 
-            let data = new google.visualization.DataTable();
+            data = new google.visualization.DataTable();
             data.addColumn('datetime', 'Time');
             data.addColumn('number', 'Acceleration (g)');
 
-            drawChart(data);
+            drawChart();
         }
 
-        function drawChart(data) {
+        function drawChart() {
             var options = {
                 title: 'Real-time Acceleration Data',
                 curveType: 'function',
@@ -61,8 +64,8 @@
                 vAxis: { title: 'Acceleration (g)' },
                 colors: ['#1b9e77']
             };
-            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
+            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
             console.log("📊 Chart Initialized");
 
             // ✅ Fetch Real-time Data from Firebase
@@ -80,7 +83,10 @@
 
                 snapshot.forEach((childSnapshot) => {
                     let entry = childSnapshot.val();
-                    let time = new Date(entry.timestamp);
+                    let timestamp = entry.timestamp;
+
+                    // Convert millis() timestamp to real Date object
+                    let time = new Date(Date.now() - (performance.now() - timestamp));
                     let acceleration = entry.acceleration_g;
 
                     console.log(📊 Data → Time: ${time}, Acceleration: ${acceleration} g);
