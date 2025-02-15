@@ -1,82 +1,71 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Acceleration Monitoring Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<head>
+    <title>Real-time Acceleration Graph</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-      }
-      #chart_div {
-        width: 800px;
-        height: 400px;
-      }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #acceleration { font-size: 20px; margin-top: 20px; }
+        #chart_div { width: 100%; height: 400px; }
     </style>
-  </head>
-  <body>
-    <h1>Acceleration Monitoring Dashboard</h1>
-    <h2>Real-time Acceleration: <span id="acceleration-value">0.00</span> g</h2>
-    <div id="chart_div">
-      <canvas id="chart"></canvas>
-    </div>
+</head>
+<body>
+
+    <h2>Real-time Acceleration Monitoring</h2>
+    <p id="acceleration">Loading...</p>
+    <div id="chart_div"></div>
+
     <script>
-      // Firebase configuration
-      const firebaseConfig = {
-       apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
+        // Firebase Configuration
+        const firebaseConfig = {
+  apiKey: "AIzaSyCxrkRZ2sTwg8fivnLpzzCTLtrV3sY22wk",
   authDomain: "gload-9bbb7.firebaseapp.com",
   databaseURL: "https://gload-9bbb7-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "gload-9bbb7",
   storageBucket: "gload-9bbb7.firebasestorage.app",
   messagingSenderId: "906599077982",
   appId: "1:906599077982:web:c40399c0ff5f789abf3ccf"
-      };
+        };
 
-      // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-      // Get a reference to the database
-      const db = firebase.database();
+        // Google Charts Setup
+        google.charts.load('current', {packages: ['corechart', 'line']});
+        google.charts.setOnLoadCallback(drawChart);
 
-      // Get a reference to the chart
-      const ctx = document.getElementById("chart").getContext("2d");
+        let data = new google.visualization.DataTable();
+        data.addColumn('datetime', 'Time');
+        data.addColumn('number', 'Acceleration (g)');
 
-      // Create a new chart
-      const chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [
-            {
-              label: "Acceleration (g)",
-              data: [],
-              backgroundColor: "rgba(255, 99, 132, 0.2)",
-              borderColor: "rgba(255, 99, 132, 1)",
-              borderWidth: 1
-            }
-          ]
-        },
-        options: {
-          scales: {
-            y: {
-              beginAtZero: true
-            }
-          }
+        function drawChart() {
+            var options = {
+                title: 'Real-time Acceleration Data',
+                curveType: 'function',
+                legend: { position: 'bottom' },
+                hAxis: { title: 'Time' },
+                vAxis: { title: 'Acceleration (g)' },
+                colors: ['#1b9e77']
+            };
+            var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+
+            database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
+                data.removeRows(0, data.getNumberOfRows());
+                snapshot.forEach((childSnapshot) => {
+                    let entry = childSnapshot.val();
+                    let time = new Date(entry.timestamp);
+                    let acceleration = entry.acceleration_g;
+
+                    data.addRow([time, acceleration]);
+                    document.getElementById("acceleration").innerHTML = 
+                        Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
+                });
+                chart.draw(data, options);
+            });
         }
-      });
-
-      // Listen for changes to the acceleration data
-      db.ref("/MPU6050/X_Axis").on("value", (data) => {
-        const acceleration = data.val();
-        console.log(`Acceleration: ${acceleration} g`);
-
-        // Update the chart
-        chart.data.labels.push(new Date().toLocaleTimeString());
-        chart.data.datasets[0].data.push(acceleration);
-        chart.update();
-
-        // Update the real-time acceleration value
-        document.getElementById("acceleration-value").innerText = acceleration.toFixed(2);
-      });
     </script>
-  </body>
+</body>
 </html>
