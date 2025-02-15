@@ -90,29 +90,35 @@
             historicalChart = new google.visualization.LineChart(document.getElementById('historical_chart_div'));
         }
 
-        function fetchRealTimeData() {
-            const ref = database.ref("/acceleration_data");
+       function fetchRealTimeData() {
+    const ref = database.ref("/acceleration_data");
 
-            ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
-                realTimeData.removeRows(0, realTimeData.getNumberOfRows());
+    ref.orderByKey().limitToLast(20).on('value', (snapshot) => {
+        console.log("Snapshot received:", snapshot.val());  // ✅ Debugging
 
-amałraĵ, [15-02-2025 10:39 PM]
-snapshot.forEach(childSnapshot => {
-                    const entry = childSnapshot.val();
-                    
-                    let timestampUTC = new Date(entry.timestamp); // Firebase timestamp in milliseconds
-                    let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000)); // Convert to IST
-                    
-                    console.log("UTC Time:", timestampUTC);
-                    console.log("IST Time:", timestampIST);
+        realTimeData.removeRows(0, realTimeData.getNumberOfRows());
 
-                    realTimeData.addRow([timestampIST, entry.acceleration_g]);
-                    document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
-                });
+        snapshot.forEach(childSnapshot => {
+            const entry = childSnapshot.val();
+            console.log("Entry:", entry); // ✅ Debugging each entry
+            
+            if (!entry  !entry.timestamp  !entry.acceleration_g) {
+                console.error("Invalid data:", entry);  // ✅ Debugging
+                return;
+            }
 
-                realTimeChart.draw(realTimeData, realTimeOptions);
-            });
-        }
+            let timestampUTC = new Date(entry.timestamp); 
+            let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000)); 
+
+            console.log("UTC:", timestampUTC, "IST:", timestampIST);
+
+            realTimeData.addRow([timestampIST, entry.acceleration_g]);
+            document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2) + " g";
+        });
+
+        realTimeChart.draw(realTimeData, realTimeOptions);
+    });
+}
 
         function loadHistoricalData() {
             const selectedDate = document.getElementById('datePicker').value;
