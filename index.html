@@ -53,19 +53,28 @@
             };
             var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-            database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
-                data.removeRows(0, data.getNumberOfRows());
-                snapshot.forEach((childSnapshot) => {
-                    let entry = childSnapshot.val();
-                    let time = new Date(entry.timestamp); // Adjust if needed
-                    let acceleration = entry.acceleration_g;
+          database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
+    if (!snapshot.exists()) {
+        console.warn("⚠️ No acceleration data found.");
+        return;
+    }
 
-                    data.addRow([time, acceleration]);
-                    document.getElementById("acceleration").innerHTML = 
-                        Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
-                });
-                chart.draw(data, options);
-            });
+    data.removeRows(0, data.getNumberOfRows());
+
+    snapshot.forEach((childSnapshot) => {
+        let entry = childSnapshot.val();
+        let time = new Date(entry.timestamp);  // Ensure correct timestamp format
+        let acceleration = entry.acceleration_g;
+
+        console.log(⏳ Time: ${time}, Acceleration: ${acceleration}g);
+
+        data.addRow([time, acceleration]);
+        document.getElementById("acceleration").innerHTML = 
+            Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString()};
+    });
+
+    chart.draw(data, options);
+});
         }
     </script>
 </body>
