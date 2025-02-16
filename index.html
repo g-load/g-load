@@ -17,7 +17,7 @@
         h2 { color: #333; }
         #acceleration { font-size: 24px; font-weight: bold; color: blue; }
         #chart_div { width: 100%; height: 400px; margin-top: 20px; }
-        #datePicker { margin-top: 10px; padding: 5px; font-size: 16px; }
+        input { padding: 8px; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -25,25 +25,28 @@
     <h2>Real-Time Acceleration (X-Axis)</h2>
     <p>Current Acceleration: <span id="acceleration">Loading...</span> g</p>
     
-    <label for="datePicker">Select Date:</label>
-    <input type="date" id="datePicker">
+    <label for="datePicker">Select Date: </label>
+    <input type="date" id="datePicker" onchange="fetchData()">
     
     <div id="chart_div"></div>
 
     <script>
+        // ✅ Firebase Configuration (Replace with your actual Firebase details)
         const firebaseConfig = {
-          apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-          authDomain: "g-load-dc40b.firebaseapp.com",
-          databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "g-load-dc40b",
-          storageBucket: "g-load-dc40b.firebasestorage.app",
-          messagingSenderId: "589491451732",
-          appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
+        // ✅ Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // ✅ Load Google Charts
         google.charts.load('current', { packages: ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawChart);
 
@@ -51,11 +54,11 @@
 
         function drawChart() {
             data = new google.visualization.DataTable();
-            data.addColumn('datetime', 'Time (IST)');
+            data.addColumn('string', 'Time (IST)');
             data.addColumn('number', 'Acceleration (g)');
 
             options = {
-                title: 'Acceleration Data (IST)',
+                title: 'Real-Time Acceleration Data',
                 curveType: 'function',
                 legend: { position: 'bottom' },
                 hAxis: { title: 'Time' },
@@ -64,57 +67,47 @@
             };
 
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            fetchData();
+            fetchData(); // Start fetching data
         }
 
-function fetchData(selectedDate = null) {
-    const ref = database.ref("/acceleration_data");
+        function fetchData() {
+            const selectedDate = document.getElementById("datePicker").value;
+            const ref = database.ref("/acceleration_data");
 
-    ref.orderByKey().on('value', (snapshot) => {
-        data.removeRows(0, data.getNumberOfRows());
+            ref.orderByKey().on('value', (snapshot) => {
+                data.removeRows(0, data.getNumberOfRows());
 
-        snapshot.forEach((childSnapshot) => {
-            const entry = childSnapshot.val();
-            
-            if (!entry || !entry.timestamp) return; // ✅ Prevent errors if data is missing
+                snapshot.forEach(childSnapshot => {
+                    const entry = childSnapshot.val();
+                    const timestampUTC = new Date(entry.timestamp);
 
-            const timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to milliseconds
+                    // ✅ Convert UTC to IST (Indian Standard Time)
+                    let timestampIST = new Date(timestampUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
 
-            // ✅ Convert UTC to IST manually (Add 5 hours 30 minutes)
-            let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
+                    // ✅ Format time in 12-hour format (AM/PM)
+                    let hours = timestampIST.getHours();
+                    let minutes = timestampIST.getMinutes();
+                    let ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12 || 12;
+                    minutes = minutes < 10 ? '0' + minutes : minutes;
+                    let formattedTime = ${hours}:${minutes} ${ampm};
 
-            // ✅ Format time in 12-hour AM/PM format
-            let hours = timestampIST.getHours();
-            let minutes = timestampIST.getMinutes();
-            let ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12; // The hour '0' should be '12'
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            let formattedTime = ${hours}:${minutes} ${ampm};
+                    const acceleration = entry.acceleration_g;
 
-            const acceleration = entry.acceleration_g;
+                    // ✅ Filter by selected dateif (selectedDate) {
+                        const selectedDateIST = new Date(selectedDate);
+                        if (timestampIST.toDateString() !== selectedDateIST.toDateString()) {
+                            return; // Skip if not the selected date
+                        }
+                    }
 
-            if (selectedDate) {
-                const selectedDateIST = new Date(selectedDate);
-                if (timestampIST.toDateString() !== selectedDateIST.toDateString()) {
-                    return; // ✅ Skip if not the selected date
-                }
-            }
+                    data.addRow([formattedTime, acceleration]);
+                    document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
+                });
 
-            // ✅ Add IST Date object & formatted time to Google Chart
-            data.addRow([{ v: timestampIST, f: formattedTime }, acceleration]);
-
-            // ✅ Display latest acceleration value
-            document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
-        });
-
-        // ✅ Redraw chart after adding data
-        chart.draw(data, options);
-    });
-}
-        document.getElementById('datePicker').addEventListener('change', (event) => {
-            fetchData(event.target.value);
-        });
+                chart.draw(data, options);
+            });
+        }
     </script>
 
 </body>
