@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-time Acceleration Monitor</title>
-    
-    <!-- Firebase CDN -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-    
+
+    <!-- Firebase v8 (Compatible with GitHub Pages) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <!-- Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -18,12 +18,7 @@
             text-align: center;
             margin: 20px;
         }
-        #chart_div {
-            width: 90%;
-            height: 400px;
-            margin: auto;
-        }
-        #historyChart {
+        #chart_div, #historyChart {
             width: 90%;
             height: 400px;
             margin: auto;
@@ -44,7 +39,7 @@
     <div id="historyChart"></div>
 
     <script>
-        // Firebase configuration
+        // ✅ Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
@@ -55,11 +50,11 @@
   appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
-        // Initialize Firebase
+        // ✅ Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Load Google Charts
+        // ✅ Load Google Charts
         google.charts.load('current', { 'packages': ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawRealTimeGraph);
 
@@ -88,7 +83,7 @@
                 chart.draw(realTimeData, options);
             }
 
-            // Listen for new data
+            // ✅ Listen for new data in Firebase
             db.ref('/acceleration_data').limitToLast(1).on('child_added', (snapshot) => {
                 let data = snapshot.val();
                 if (data) {
@@ -108,9 +103,7 @@
             }
 
             let startTime = new Date(selectedDate).setHours(0, 0, 0, 0);
-            let endTime = new Date(selectedDate).setHours(23, 59, 59, 999);
-
-db.ref('/acceleration_data')
+            let endTime = new Date(selectedDate).setHours(23, 59, 59, 999);db.ref('/acceleration_data')
                 .orderByChild("timestamp")
                 .startAt(startTime)
                 .endAt(endTime)
