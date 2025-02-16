@@ -73,11 +73,14 @@ function fetchData(selectedDate = null) {
     ref.orderByKey().on('value', (snapshot) => {
         data.removeRows(0, data.getNumberOfRows());
 
-        snapshot.forEach(childSnapshot => {
+        snapshot.forEach((childSnapshot) => {
             const entry = childSnapshot.val();
+            
+            if (!entry || !entry.timestamp) return; // ✅ Prevent errors if data is missing
+
             const timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to milliseconds
 
-            // ✅ Convert to IST by adding 5 hours 30 minutes
+            // ✅ Convert UTC to IST manually (Add 5 hours 30 minutes)
             let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
 
             // ✅ Format time in 12-hour AM/PM format
@@ -94,19 +97,21 @@ function fetchData(selectedDate = null) {
             if (selectedDate) {
                 const selectedDateIST = new Date(selectedDate);
                 if (timestampIST.toDateString() !== selectedDateIST.toDateString()) {
-                    return; // Skip if not the selected date
+                    return; // ✅ Skip if not the selected date
                 }
             }
 
-            // ✅ Pass IST Date object and formatted time
+            // ✅ Add IST Date object & formatted time to Google Chart
             data.addRow([{ v: timestampIST, f: formattedTime }, acceleration]);
+
+            // ✅ Display latest acceleration value
             document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
         });
 
+        // ✅ Redraw chart after adding data
         chart.draw(data, options);
     });
 }
-
         document.getElementById('datePicker').addEventListener('change', (event) => {
             fetchData(event.target.value);
         });
