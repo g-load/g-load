@@ -3,22 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MPU6050 Acceleration Data</title>
+    <title>Real-time Acceleration Data</title>
+    
+    <!-- Google Charts -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        #acceleration { font-size: 24px; font-weight: bold; margin: 20px 0; }
-        #chart_div { width: 100%; height: 400px; }
-        input { padding: 10px; font-size: 16px; margin: 10px; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #chart_div {
+            width: 100%;
+            height: 400px;
+        }
+        #datePicker {
+            padding: 5px;
+            font-size: 16px;
+        }
+        button {
+            padding: 5px 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
     <h2>Real-time Acceleration Data</h2>
-    <p id="acceleration">Loading...</p>
-    
+    <h3>Current Acceleration: <span id="currentAcceleration">--</span> g</h3>
+
     <h3>Acceleration Graph (IST)</h3>
     <div id="chart_div"></div>
 
@@ -28,116 +47,125 @@
 
     <script>
         // Firebase Configuration
-        var firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-  authDomain: "g-load-dc40b.firebaseapp.com",
-  databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "g-load-dc40b",
-  storageBucket: "g-load-dc40b.firebasestorage.app",
-  messagingSenderId: "589491451732",
-  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+    authDomain: "g-load-dc40b.firebaseapp.com",
+    databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "g-load-dc40b",
+    storageBucket: "g-load-dc40b.firebasestorage.app",
+    messagingSenderId: "589491451732",
+    appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-        var db = firebase.database();
-        
-        // Load Google Charts
-        google.charts.load('current', { packages: ['corechart', 'line'] });
-        google.charts.setOnLoadCallback(drawChart);
-        
-        let data;
-        let chart;
-        let options = {
-            title: 'Real-time Acceleration Data',
-            curveType: 'function',
-            legend: { position: 'bottom' },
-            hAxis: { title: 'Time (IST)', format: 'hh:mm a' },
-            vAxis: { title: 'Acceleration (g)', minValue: 0 }
-        };
+        const db = firebase.database();
 
+        // Google Charts Loader
+        google.charts.load('current', { 'packages': ['corechart', 'line'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        let chart, data, options;
+
+        // Function to Convert to IST Properly
+        function convertToIST(timestamp) {
+            let date = new Date(timestamp * 1000);
+            let istDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+            return istDate;
+        }
+
+        // Function to Draw the Chart
         function drawChart() {
             data = new google.visualization.DataTable();
-            data.addColumn('datetime', 'Time');
+            data.addColumn('datetime', 'Time (IST)');
             data.addColumn('number', 'Acceleration (g)');
+
+            options = {
+                title: 'Real-time Acceleration Data',
+                curveType: 'function',
+                legend: { position: 'bottom' },
+                hAxis: { title: 'Time (IST)', format: 'hh:mm a' },
+                vAxis: { title: 'Acceleration (g)', minValue: 0 },
+                height: 400
+            };
+
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            chart.draw(data, options);
+
+            fetchRealTimeData();
         }
 
-      function convertToIST(timestamp) {
-    let date = new Date(timestamp * 1000); // Convert UNIX timestamp (seconds) to Date
-    return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })); 
-}
+        // Function to Fetch Real-time Data
+        function fetchRealTimeData() {
+            db.ref('/acceleration_data').limitToLast(50).on('value', snapshot => {
+                let values = [];
 
-        function updateChart(timestamp, acceleration) {
-            data.addRow([convertToIST(timestamp), acceleration]);
-            chart.draw(data, options);
-        }
+                snapshot.forEach(child => {
+                    let val = child.val();
+                    if (val.timestamp && val.acceleration_g) {
+                        values.push({
+                            time: convertToIST(val.timestamp),
+                            acceleration: val.acceleration_g
+                        });
+                    }
+                });
 
-        function listenForRealtimeUpdates() {
-            console.log("Listening for real-time updates...");
-            db.ref('/acceleration_data').limitToLast(1).on('child_added', function(snapshot) {
-                let val = snapshot.val();
-                if (!val) return;
-                
-                let acceleration = val.acceleration_g || 0;
-                let timestamp = val.timestamp || 0;
+                // Sort timestamps to avoid graph glitches
+                values.sort((a, b) => a.time - b.time);
 
-                document.getElementById('acceleration').innerText = `Current Acceleration: ${acceleration} g`;
-                updateChart(timestamp, acceleration);
+                // Update current acceleration display
+                if (values.length > 0) {
+                    document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(2);
+                }// Update Graph
+                data = new google.visualization.DataTable();
+                data.addColumn('datetime', 'Time (IST)');
+                data.addColumn('number', 'Acceleration (g)');
+
+                values.forEach(entry => {
+                    data.addRow([entry.time, entry.acceleration]);
+                });
+
+                chart.draw(data, options);
             });
         }
 
+        // Function to Load Historical Data
         function loadHistoricalData() {
-            let dateInput = document.getElementById("datePicker").value;
-            if (!dateInput) {
-                alert("Please select a date!");
-                return;
-            }
+            let selectedDate = document.getElementById('datePicker').value;
+            let startOfDay = new Date(selectedDate + "T00:00:00+05:30").getTime() / 1000;
+            let endOfDay = startOfDay + 86400;
 
-            let startTimestamp = new Date(dateInput).setHours(0, 0, 0, 0) / 1000;  // Midnight start
-            let endTimestamp = new Date(dateInput).setHours(23, 59, 59, 999) / 1000;  // Midnight end
+            db.ref('/acceleration_data')
+                .orderByChild('timestamp')
+                .startAt(startOfDay)
+                .endAt(endOfDay)
+                .once('value', snapshot => {
+                    if (!snapshot.exists()) {
+                        alert("No data found for this date.");
+                        return;
+                    }
 
-console.log("Fetching historical data from:", startTimestamp, "to", endTimestamp);
+                    let values = [];
+                    snapshot.forEach(child => {
+                        let val = child.val();
+                        values.push({
+                            time: convertToIST(val.timestamp),
+                            acceleration: val.acceleration_g
+                        });
+                    });
 
-db.ref('/acceleration_data')
-    .orderByChild('timestamp')
-    .startAt(startTimestamp)
-    .endAt(endTimestamp)
-    .once('value', function(snapshot) {
-        if (!snapshot.exists()) {
-            alert("No data found for this date.");
-            return;
+                    values.sort((a, b) => a.time - b.time);
+
+                    data = new google.visualization.DataTable();
+                    data.addColumn('datetime', 'Time (IST)');
+                    data.addColumn('number', 'Acceleration (g)');
+
+                    values.forEach(entry => {
+                        data.addRow([entry.time, entry.acceleration]);
+                    });
+
+                    chart.draw(data, options);
+                });
         }
-
-        data = new google.visualization.DataTable();
-        data.addColumn('datetime', 'Time');
-        data.addColumn('number', 'Acceleration (g)');
-
-        let values = [];
-        snapshot.forEach(function(child) {
-            let val = child.val();
-            values.push({
-                timestamp: val.timestamp,
-                acceleration: val.acceleration_g
-            });
-        });
-
-        // Sort timestamps before displaying
-        values.sort((a, b) => a.timestamp - b.timestamp);
-
-        values.forEach(val => {
-            console.log("Adding to graph:", val.timestamp, convertToIST(val.timestamp));
-            data.addRow([convertToIST(val.timestamp), val.acceleration]);
-        });
-
-        chart.draw(data, options);
-    });
-        }
-
-        // Start listening for real-time updates
-        listenForRealtimeUpdates();
     </script>
-
 </body>
 </html>
