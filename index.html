@@ -1,114 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Acceleration Graph</title>
-
-    <!-- ✅ Firebase v8 -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-    <!-- ✅ Google Charts -->
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        h2 { color: #333; }
-        #acceleration { font-size: 24px; font-weight: bold; color: blue; }
-        #chart_div { width: 100%; height: 400px; margin-top: 20px; }
-        #datePicker { margin-top: 10px; padding: 5px; font-size: 16px; }
-    </style>
-</head>
+<title>Real-time Acceleration Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> </head>
 <body>
 
-    <h2>Real-Time Acceleration (X-Axis)</h2>
-    <p>Current Acceleration: <span id="acceleration">Loading...</span> g</p>
-    
-    <label for="datePicker">Select Date: </label>
-    <input type="date" id="datePicker" onchange="fetchData()">
-    
-    <div id="chart_div"></div>
+<h1>Real-time Acceleration (g)</h1>
+<div id="accelerationValue">0.00</div>  <canvas id="accelerationChart" width="400" height="200"></canvas>
 
-    <script>
-        // ✅ Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-            authDomain: "g-load-dc40b.firebaseapp.com",
-            databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "g-load-dc40b",
-            storageBucket: "g-load-dc40b.appspot.com",
-            messagingSenderId: "589491451732",
-            appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
-        };
+<h2>Historical Data</h2>
+<input type="date" id="datePicker">
+<button onclick="loadHistoricalData()">Load Data</button>
+<div id="historicalData"></div>
 
-        // ✅ Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+<script>
+  let accelerationValue = document.getElementById("accelerationValue");
+  let accelerationChart = document.getElementById("accelerationChart").getContext('2d');
+  let datePicker = document.getElementById("datePicker");
+  let historicalDataDiv = document.getElementById("historicalData");
 
-        // ✅ Load Google Charts
-        google.charts.load('current', { packages: ['corechart', 'line'] });
-        google.charts.setOnLoadCallback(drawChart);
-
-        let data, chart, options;
-
-        function drawChart() {
-            data = new google.visualization.DataTable();
-            data.addColumn('datetime', 'Time (IST)');
-            data.addColumn('number', 'Acceleration (g)');
-
-            options = {
-                title: 'Real-Time Acceleration Data',
-                curveType: 'function',
-                legend: { position: 'bottom' },
-                hAxis: { title: 'Time (IST)', format: 'h:mm a' }, // ✅ 12-hour format
-                vAxis: { title: 'Acceleration (g)', minValue: 0 },
-                backgroundColor: '#f5f5f5'
-            };
-
-            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-
-            fetchData(); // ✅ Start fetching data
+  let chart = new Chart(accelerationChart, {
+    type: 'line',
+    data: {
+      labels: [], // Time labels
+      datasets: [{
+        label: 'Acceleration (g)',
+        data: [], // Acceleration data
+        borderColor: 'blue',
+        borderWidth: 1,
+        tension: 0.4 // Smooths the line
+      }]
+    },
+    options: {
+      scales: {
+        x: {  // Time axis
+          type: 'time', // Important for time series data
+          time: {
+            parser: 'seconds', // Adjust if your timestamps are in milliseconds
+            unit: 'second',  // or 'minute', 'hour', etc. as needed
+            displayFormats: {
+              second: 'h:mm:ss a' // Customize time format
+            }
+          },
+          title: {
+            display: true,
+            text: 'Indian Time (IST)'
+          }
+        },
+        y: {
+          beginAtZero: false, // Don't start y-axis at 0 if not needed
+          title: {
+            display: true,
+            text: 'Acceleration (g)'
+          }
         }
+      }
+    }
+  });
 
-        function fetchData() {
-            const selectedDate = document.getElementById('datePicker').value;
-            const ref = database.ref("/acceleration_data");
+  // Function to update the chart and acceleration value
+  function updateAcceleration(time, acceleration) {
+    accelerationValue.textContent = acceleration.toFixed(2); // Display with 2 decimal places
 
-            ref.orderByKey().on('value', (snapshot) => {
-                data.removeRows(0, data.getNumberOfRows());
+    chart.data.labels.push(time);
+    chart.data.datasets[0].data.push(acceleration);
 
-                snapshot.forEach(childSnapshot => {
-                    const entry = childSnapshot.val();
-                    const timestamp = new Date(entry.timestamp * 1000);
+    if (chart.data.labels.length > 10) { // Keep only last 10 data points on the graph
+      chart.data.labels.shift();
+      chart.data.datasets[0].data.shift();
+    }
+    chart.update();
+  }
 
-                    // ✅ Convert to Indian Standard Time (IST)
-                    let istTime = new Date(timestamp.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  // Simulated data (Replace with actual data from Firebase)
+  // This is how you would receive data from your ESP8266/Firebase
+  // You would use a library like the Firebase JavaScript SDK to read data in real-time.
 
-                    // ✅ Format time in 12-hour format
-                    let hours = istTime.getHours();
-                    let minutes = istTime.getMinutes();
-                    let ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12 || 12;
-                    minutes = minutes < 10 ? '0' + minutes : minutes;
-                    let formattedTime = ${hours}:${minutes} ${ampm};
+  // Example real-time data handling (replace with your Firebase setup)
+  // Assuming you have a Firebase listener set up to get new acceleration data
+  // and it calls a function named handleNewAccelerationData(timestamp, acceleration):
 
-                    const acceleration = entry.acceleration_g;if (selectedDate) {
-                        const selectedDateIST = new Date(selectedDate);
-                        if (istTime.toDateString() !== selectedDateIST.toDateString()) {
-                            return; // ✅ Skip data not matching the selected date
-                        }
-                    }
+  function handleNewAccelerationData(timestamp, acceleration) {
+    // Convert the Firebase timestamp (likely a number) to a Date object
+    let date = new Date(timestamp * 1000); // *1000 if timestamp is in seconds
+    let istTime = date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }); // Indian Time
 
-                    // ✅ Add formatted time to the graph
-                    data.addRow([{ v: istTime, f: formattedTime }, acceleration]);
-                    document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
-                });
+    updateAcceleration(istTime, acceleration);
+  }
 
-                chart.draw(data, options);
-            });
-        }
-    </script>
+
+  function loadHistoricalData() {
+    let selectedDate = datePicker.value;
+    if (!selectedDate) {
+      alert("Please select a date.");
+      return;
+    }
+
+    // You would use the Firebase JavaScript SDK to fetch historical data
+    // based on the selectedDate.  This is a placeholder:
+    historicalDataDiv.innerHTML = "Fetching historical data for " + selectedDate + "...";
+
+    // Example:  Replace with your Firebase data retrieval logic
+    // ... (Your Firebase code to retrieve data for the selected date) ...
+
+    // After retrieving the data, display it in the historicalDataDiv
+    // Example:
+    // let historicalData = "Data from Firebase for " + selectedDate + ": ...";
+    // historicalDataDiv.innerHTML = historicalData;
+  }
+
+  // Initialize datepicker to today's date
+  datePicker.valueAsDate = new Date();
+
+
+</script>
 
 </body>
 </html>
