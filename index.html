@@ -19,7 +19,7 @@
             width: 100%;  
             height: 400px;  
         }  
-        #datePicker, #hourPicker {  
+        #datePicker, #downloadDatePicker, #hourPicker {  
             padding: 5px;  
             font-size: 16px;  
         }  
@@ -27,7 +27,6 @@
             padding: 5px 10px;  
             font-size: 16px;  
             cursor: pointer;  
-            margin-top: 10px;  
         }  
     </style>  
 </head>  
@@ -50,7 +49,8 @@
         <option value="">Select Hour</option>
         <script>
             for (let i = 0; i < 24; i++) {
-                document.write(`<option value="${i}">${i}:00 - ${i}:59</option>`);
+                let hour = i.toString().padStart(2, '0');
+                document.write(`<option value="${hour}">${hour}:00 - ${hour}:59</option>`);
             }
         </script>
     </select>
@@ -67,6 +67,7 @@
             messagingSenderId: "589491451732",  
             appId: "1:589491451732:web:b36abd93b770651dfd7ac1"  
         };  
+
         // Initialize Firebase  
         firebase.initializeApp(firebaseConfig);  
         const db = firebase.database();  
@@ -74,21 +75,17 @@
         // Google Charts Loader  
         google.charts.load('current', { 'packages': ['corechart', 'line'] });  
         google.charts.setOnLoadCallback(drawCharts);  
+
         let realTimeChart, historyChart, realTimeData, historyData, options;  
 
-        // Convert Timestamp to IST  
+        // Convert to IST Properly  
         function convertToIST(timestamp) {  
             let date = new Date(timestamp * 1000);  
             let istDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));  
             return istDate;  
         }  
 
-        function formatIST(timestamp) {  
-            let date = convertToIST(timestamp);  
-            return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;  
-        }  
-
-        // Function to Draw Graphs  
+        // Draw Graphs  
         function drawCharts() {  
             realTimeData = new google.visualization.DataTable();  
             realTimeData.addColumn('datetime', 'Time (IST)');  
@@ -109,7 +106,6 @@
 
             realTimeChart = new google.visualization.LineChart(document.getElementById('chart_div'));  
             historyChart = new google.visualization.LineChart(document.getElementById('history_chart_div'));  
-
             fetchRealTimeData();  
         }  
 
@@ -120,11 +116,15 @@
                 snapshot.forEach(child => {  
                     let val = child.val();  
                     if (val.timestamp && val.acceleration_g) {  
-                        values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });  
+                        values.push({  
+                            time: convertToIST(val.timestamp),  
+                            acceleration: val.acceleration_g  
+                        });  
                     }  
                 });  
 
                 values.sort((a, b) => a.time - b.time);  
+
                 if (values.length > 0) {  
                     document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(2);  
                 }  
@@ -132,7 +132,9 @@
                 realTimeData = new google.visualization.DataTable();  
                 realTimeData.addColumn('datetime', 'Time (IST)');  
                 realTimeData.addColumn('number', 'Acceleration (g)');  
-                values.forEach(entry => realTimeData.addRow([entry.time, entry.acceleration]));  
+                values.forEach(entry => {  
+                    realTimeData.addRow([entry.time, entry.acceleration]);  
+                });  
 
                 realTimeChart.draw(realTimeData, options);  
             });  
@@ -153,27 +155,56 @@
                         alert("No data found for this date.");  
                         return;  
                     }  
+
                     let values = [];  
                     snapshot.forEach(child => {  
                         let val = child.val();  
-                        values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });  
+                        values.push({  
+                            time: convertToIST(val.timestamp),  
+                            acceleration: val.acceleration_g  
+                        });  
                     });  
 
                     values.sort((a, b) => a.time - b.time);  
+
                     historyData = new google.visualization.DataTable();  
                     historyData.addColumn('datetime', 'Time (IST)');  
                     historyData.addColumn('number', 'Acceleration (g)');  
-                    values.forEach(entry => historyData.addRow([entry.time, entry.acceleration]));  
+                    values.forEach(entry => {  
+                        historyData.addRow([entry.time, entry.acceleration]);  
+                    });  
 
                     historyChart.draw(historyData, options);  
                 });  
         }  
 
-        // Download Data as CSV  
+        // Download CSV Function  
         function downloadData() {  
             let selectedDate = document.getElementById('downloadDatePicker').value;  
             let selectedHour = document.getElementById('hourPicker').value;  
-            alert(`Download feature coming soon! Selected Date: ${selectedDate}, Hour: ${selectedHour}`);  
+            if (!selectedDate || selectedHour === "") {  
+                alert("Please select both date and hour.");  
+                return;  
+            }  
+
+            let startOfHour = new Date(`${selectedDate}T${selectedHour}:00:00+05:30`).getTime() / 1000;  
+            let endOfHour = startOfHour + 3600;  
+
+            db.ref('/acceleration_data').orderByChild('timestamp').startAt(startOfHour).endAt(endOfHour).once('value', snapshot => {  
+                if (!snapshot.exists()) { alert("No data found."); return; }  
+
+                let csv = "Time (IST),Acceleration (g)\n";  
+                snapshot.forEach(child => {  
+                    let val = child.val();  
+                    csv += `${convertToIST(val.timestamp)},${val.acceleration_g}\n`;  
+                });  
+
+                let blob = new Blob([csv], { type: 'text/csv' });  
+                let a = document.createElement('a');  
+                a.href = URL.createObjectURL(blob);  
+                a.download = `Acceleration_${selectedDate}_${selectedHour}.csv`;  
+                a.click();  
+            });  
         }  
     </script>  
 </body>  
