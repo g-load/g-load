@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <title>Real-time Acceleration Monitoring</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <style>
     body {
@@ -31,8 +30,8 @@
 
   <script>
     // Firebase configuration
-    const firebaseConfig = {
-     apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+    var firebaseConfig = {
+      apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "g-load-dc40b",
@@ -43,13 +42,13 @@
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+    var database = firebase.database();
 
     // Google Charts setup
     google.charts.load('current', {packages: ['corechart', 'line']});
     google.charts.setOnLoadCallback(drawChart);
 
-    let data = new google.visualization.DataTable();
+    var data = new google.visualization.DataTable();
     data.addColumn('datetime', 'Time');
     data.addColumn('number', 'Acceleration (g)');
 
@@ -68,9 +67,9 @@
       database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
         data.removeRows(0, data.getNumberOfRows());
         snapshot.forEach((childSnapshot) => {
-          let entry = childSnapshot.val();
-          let time = new Date(entry.timestamp * 1000);
-          let acceleration = entry.acceleration_g;
+          var entry = childSnapshot.val();
+          var time = new Date(entry.timestamp * 1000);
+          var acceleration = entry.acceleration_g;
           data.addRow([time, acceleration]);
           document.getElementById("acceleration").innerHTML = `Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
         });
@@ -79,16 +78,16 @@
     }
 
     document.getElementById("load-data-button").addEventListener("click", () => {
-      let dateInput = document.getElementById("date-input");
-      let date = dateInput.valueAsDate;
-      let timestamp = date.getTime() / 1000;
+      var dateInput = document.getElementById("date-input");
+      var date = dateInput.valueAsDate;
+      var timestamp = date.getTime() / 1000;
       database.ref('/acceleration_data').orderByChild("timestamp").startAt(timestamp).endAt(timestamp + 86400).on('value', (snapshot) => {
-        let historicalDataDiv = document.getElementById("historical-data-div");
+        var historicalDataDiv = document.getElementById("historical-data-div");
         historicalDataDiv.innerHTML = "";
         snapshot.forEach((childSnapshot) => {
-          let entry = childSnapshot.val();
-          let time = new Date(entry.timestamp * 1000);
-          let acceleration = entry.acceleration_g;
+          var entry = childSnapshot.val();
+          var time = new Date(entry.timestamp * 1000);
+          var acceleration = entry.acceleration_g;
           historicalDataDiv.innerHTML += `<p>Acceleration: ${acceleration} g at ${time.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>`;
         });
       });
