@@ -90,7 +90,7 @@
                     let ampm = hours >= 12 ? 'PM' : 'AM';
                     hours = hours % 12 || 12;
                     minutes = minutes < 10 ? '0' + minutes : minutes;
-                    let formattedTime = ${hours}:${minutes} ${ampm};
+                    let formattedTime = '${hours}:${minutes} ${ampm}';
 
                     const acceleration = entry.acceleration_g;
 
