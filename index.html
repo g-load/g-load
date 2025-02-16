@@ -27,15 +27,15 @@
     <button onclick="loadHistoricalData()">Load Data</button>
 
     <script>
-        // Firebase v8 Configuration
+        // Firebase Configuration
         var firebaseConfig = {
-            apiKey: "YOUR_API_KEY",  // Replace with your Firebase API Key
-            authDomain: "g-load-dc40b.firebaseapp.com",
-            databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "g-load-dc40b",
-            storageBucket: "g-load-dc40b.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+  authDomain: "g-load-dc40b.firebaseapp.com",
+  databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "g-load-dc40b",
+  storageBucket: "g-load-dc40b.firebasestorage.app",
+  messagingSenderId: "589491451732",
+  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // Initialize Firebase
@@ -64,26 +64,69 @@
             chart.draw(data, options);
         }
 
+        function convertToIST(timestamp) {
+            let date = new Date(timestamp * 1000);  
+            date.setHours(date.getHours() + 5, date.getMinutes() + 30);  // Convert to IST
+            return date;
+        }
+
         function updateChart(timestamp, acceleration) {
-            data.addRow([new Date(timestamp * 1000), acceleration]);
+            data.addRow([convertToIST(timestamp), acceleration]);
             chart.draw(data, options);
         }
 
         function listenForRealtimeUpdates() {
-    console.log("Listening for updates...");
-    db.ref('/acceleration_data').limitToLast(1).on('child_added', function(snapshot) {
-        console.log("New data received:", snapshot.val());
-        
-        let val = snapshot.val();
-        if (!val) return;
-        
-        let acceleration = val.acceleration_g || 0;
-        let timestamp = val.timestamp || 0;
+            console.log("Listening for real-time updates...");
+            db.ref('/acceleration_data').limitToLast(1).on('child_added', function(snapshot) {
+                let val = snapshot.val();
+                if (!val) return;
+                
+                let acceleration = val.acceleration_g || 0;
+                let timestamp = val.timestamp || 0;
 
-        document.getElementById('acceleration').innerText = `Current Acceleration: ${acceleration} g`;
-        updateChart(timestamp, acceleration);
-    });
+                document.getElementById('acceleration').innerText = `Current Acceleration: ${acceleration} g`;
+                updateChart(timestamp, acceleration);
+            });
         }
+
+        function loadHistoricalData() {
+            let dateInput = document.getElementById("datePicker").value;
+            if (!dateInput) {
+                alert("Please select a date!");
+                return;
+            }
+
+            let startTimestamp = new Date(dateInput).setHours(0, 0, 0, 0) / 1000;  // Midnight start
+            let endTimestamp = new Date(dateInput).setHours(23, 59, 59, 999) / 1000;  // Midnight end
+
+            console.log(`Fetching historical data from ${startTimestamp} to ${endTimestamp}`);
+
+            db.ref('/acceleration_data')
+                .orderByChild('timestamp')
+                .startAt(startTimestamp)
+                .endAt(endTimestamp)
+                .once('value', function(snapshot) {
+                    data = new google.visualization.DataTable();
+                    data.addColumn('datetime', 'Time');
+                    data.addColumn('number', 'Acceleration (g)');
+
+                    let values = [];
+                    snapshot.forEach(function(child) {
+                        let val = child.val();
+                        values.push({ timestamp: val.timestamp, acceleration: val.acceleration_g });
+                    });
+
+                    // Sort by timestamp (important for proper graph rendering)
+                    values.sort((a, b) => a.timestamp - b.timestamp);
+
+                    values.forEach(val => {
+                        data.addRow([convertToIST(val.timestamp), val.acceleration]);
+                    });
+
+                    chart.draw(data, options);
+                });
+        }
+
         // Start listening for real-time updates
         listenForRealtimeUpdates();
     </script>
