@@ -3,38 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time & Historical Acceleration Data</title>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
-    <!-- Google Charts -->
+    <title>Real-time Acceleration Monitor</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        #time { font-size: 20px; margin-bottom: 10px; }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #chart_div { width: 100%; height: 400px; }
         #acceleration { font-size: 24px; font-weight: bold; }
-        .container { width: 90%; margin: auto; }
-        #chart_div { width: 100%; height: 400px; margin-top: 20px; }
-        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
+    <h2>Real-time Acceleration Monitor</h2>
+    <p>Current Acceleration: <span id="acceleration">0.00</span> g</p>
+    <div id="chart_div"></div>
 
-    <h2>Real-time & Historical Acceleration Data</h2>
-    <div id="time">IST Time: Loading...</div>
-    <div id="acceleration">Current Acceleration: 0.00 g</div>
-    
-    <div class="container">
-        <div id="chart_div"></div>
-        <input type="date" id="datePicker">
-        <button onclick="fetchHistoricalData()">Load Data for Selected Date</button>
-    </div>
+    <h3>View Historical Data</h3>
+    <input type="date" id="datePicker">
+    <button onclick="loadHistoricalData()">Load Data</button>
 
     <script>
-        // Firebase Configuration (Replace with your details)
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
@@ -46,110 +35,70 @@
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        // Load Google Charts
-        google.charts.load('current', { packages: ['corechart', 'line'] });
-        google.charts.setOnLoadCallback(initChart);
+        google.charts.load('current', { packages: ['corechart'] });
+        google.charts.setOnLoadCallback(drawChart);
 
-        let data, chart, options;
-        let dataPoints = [];
-
-        function initChart() {
-            data = new google.visualization.DataTable();
-            data.addColumn('datetime', 'Time (IST)');
-            data.addColumn('number', 'Acceleration (g)');
-
-            options = {
-                title: 'Acceleration Data (Real-time & Historical)',
-                curveType: 'function',
-                legend: { position: 'bottom' },
-                hAxis: { title: 'Time (IST)', format: 'hh:mm:ss a', gridlines: { count: 10 } },
-                vAxis: { title: 'Acceleration (g)', minValue: -1, maxValue: 1.5 },
-                width: '100%',
-                height: 400
-            };
-
-            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            drawChart();
-        }
+        let data = [['Time', 'Acceleration (g)']];
+        let chart;
+        let options = {
+            title: 'Real-time Acceleration Data',
+            curveType: 'function',
+            legend: { position: 'bottom' },
+            hAxis: { title: 'Time' },
+            vAxis: { title: 'Acceleration (g)', minValue: 0 }
+        };
 
         function drawChart() {
-            chart.draw(data, options);
+            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+            updateChart();
         }
 
-        // Convert timestamp to IST
-        function getISTTime(timestamp) {
-            return new Date(new Date(timestamp).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+        function updateChart() {
+            db.ref('/acceleration_data').limitToLast(10).on('value', (snapshot) => {
+                data = [['Time', 'Acceleration (g)']];
+                snapshot.forEach((childSnapshot) => {
+                    let entry = childSnapshot.val();
+                    let timeIST = new Date(entry.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+                    data.push([timeIST, entry.acceleration_g]);
+                    document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2);
+                });
+
+                let dataTable = google.visualization.arrayToDataTable(data);
+                chart.draw(dataTable, options);
+            });
         }
 
-        // Fetch latest real-time data
-        database.ref('acceleration_data').limitToLast(1).on('child_added', snapshot => {
-            const value = snapshot.val();
-            if (value) {
-                const acceleration = value.acceleration_g;
-                const istTime = getISTTime(value.timestamp);
-
-                document.getElementById('acceleration').innerHTML = `Current Acceleration: ${acceleration.toFixed(2)} g`;
-
-                dataPoints.push([istTime, acceleration]);
-
-                if (dataPoints.length > 20) {
-                    dataPoints.shift(); // Keep only the latest 20 data points
-                }
-
-                data.removeRows(0, data.getNumberOfRows());
-                data.addRows(dataPoints);
-                drawChart();
-            }
-        });
-
-        // Fetch historical data based on selected date
-        function fetchHistoricalData() {
-            const selectedDate = document.getElementById('datePicker').value;
+        function loadHistoricalData() {
+            let selectedDate = document.getElementById('datePicker').value;
             if (!selectedDate) {
                 alert("Please select a date.");
                 return;
             }
 
-            const startOfDay = new Date(selectedDate).setHours(0, 0, 0, 0);
-            const endOfDay = new Date(selectedDate).setHours(23, 59, 59, 999);
+            let startTime = new Date(selectedDate + "T00:00:00+05:30").getTime();
+            let endTime = new Date(selectedDate + "T23:59:59+05:30").getTime();
 
-            database.ref('acceleration_data').orderByKey().startAt(String(startOfDay)).endAt(String(endOfDay)).once('value', snapshot => {
-                const history = snapshot.val();
-                if (history) {
-                    let historicalData = [];
-                    Object.keys(history).forEach(key => {
-                        const entry = history[key];
-                        const istTime = getISTTime(entry.timestamp);
-                        historicalData.push([istTime, entry.acceleration_g]);
-                    });
+            db.ref('/acceleration_data').orderByChild("timestamp").startAt(startTime).endAt(endTime).once('value', (snapshot) => {
+                let historyData = [['Time', 'Acceleration (g)']];
+                snapshot.forEach((childSnapshot) => {
+                    let entry = childSnapshot.val();
+                    let timeIST = new Date(entry.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+                    historyData.push([timeIST, entry.acceleration_g]);
+                });
 
-                    // Merge historical data with real-time data
-                    dataPoints = [...historicalData, ...dataPoints];
-
-                    // Remove duplicates
-                    const uniqueData = Array.from(new Map(dataPoints.map(item => [item[0].getTime(), item])).values());
-
-                    data.removeRows(0, data.getNumberOfRows());
-                    data.addRows(uniqueData);
-                    drawChart();
-                } else {
+                if (historyData.length === 1) {
                     alert("No data found for the selected date.");
+                    return;
                 }
+
+                let historyChart = new google.visualization.LineChart(document.getElementById('chart_div'));
+                let historyTable = google.visualization.arrayToDataTable(historyData);
+                historyChart.draw(historyTable, options);
             });
         }
-
-        // Display Indian Standard Time (IST)
-        function updateISTTime() {
-            const istNow = getISTTime(Date.now());
-            const formattedTime = istNow.toLocaleTimeString("en-US", { hour12: true, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            document.getElementById('time').innerHTML = `IST Time: ${formattedTime}`;
-        }
-        setInterval(updateISTTime, 1000);
-
     </script>
-
 </body>
 </html>
