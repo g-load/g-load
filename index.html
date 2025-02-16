@@ -75,29 +75,31 @@ function fetchData(selectedDate = null) {
 
         snapshot.forEach(childSnapshot => {
             const entry = childSnapshot.val();
-            const timestampUTC = new Date(entry.timestamp); // Firebase stores timestamps in milliseconds
+            const timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to milliseconds
 
-            // ✅ Convert UTC to IST properly
-            let formatter = new Intl.DateTimeFormat('en-US', { 
-                timeZone: 'Asia/Kolkata', 
-                hour: 'numeric', 
-                minute: 'numeric', 
-                hour12: true 
-            });
+            // ✅ Convert to IST by adding 5 hours 30 minutes
+            let timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
 
-            let formattedTime = formatter.format(timestampUTC);
+            // ✅ Format time in 12-hour AM/PM format
+            let hours = timestampIST.getHours();
+            let minutes = timestampIST.getMinutes();
+            let ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // The hour '0' should be '12'
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            let formattedTime = ${hours}:${minutes} ${ampm};
 
             const acceleration = entry.acceleration_g;
 
             if (selectedDate) {
                 const selectedDateIST = new Date(selectedDate);
-                if (timestampUTC.toDateString() !== selectedDateIST.toDateString()) {
+                if (timestampIST.toDateString() !== selectedDateIST.toDateString()) {
                     return; // Skip if not the selected date
                 }
             }
 
-            // ✅ Add formatted time to the graph
-            data.addRow([{ v: timestampUTC, f: formattedTime }, acceleration]);
+            // ✅ Pass IST Date object and formatted time
+            data.addRow([{ v: timestampIST, f: formattedTime }, acceleration]);
             document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
         });
 
