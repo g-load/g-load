@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Acceleration Graph</title>
 
-    <!-- Firebase -->
+    <!-- ✅ Firebase v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    <!-- Google Charts -->
+    <!-- ✅ Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
     <style>
@@ -17,29 +17,30 @@
         h2 { color: #333; }
         #acceleration { font-size: 24px; font-weight: bold; color: blue; }
         #chart_div { width: 100%; height: 400px; margin-top: 20px; }
-        input { padding: 8px; font-size: 16px; }
+        #datePicker { margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <h2>Real-Time Acceleration (X-Axis)</h2>
     <p>Current Acceleration: <span id="acceleration">Loading...</span> g</p>
-
-    <label for="datePicker">Select Date: </label>
-    <input type="date" id="datePicker" onchange="fetchData()">
+    
+    <!-- Date Picker for Historical Data -->
+    <input type="date" id="datePicker">
+    <button onclick="fetchData()">Load Data</button>
 
     <div id="chart_div"></div>
 
     <script>
-        // ✅ Firebase Configuration (Replace with your actual Firebase details)
+        // ✅ Firebase Configuration (Update with Your Firebase Details)
         const firebaseConfig = {
             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-  authDomain: "g-load-dc40b.firebaseapp.com",
-  databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "g-load-dc40b",
-  storageBucket: "g-load-dc40b.firebasestorage.app",
-  messagingSenderId: "589491451732",
-  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+            authDomain: "g-load-dc40b.firebaseapp.com",
+            databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "g-load-dc40b",
+            storageBucket: "g-load-dc40b.firebaseapp.com",
+            messagingSenderId: "589491451732",
+            appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // ✅ Initialize Firebase
@@ -54,54 +55,55 @@
 
         function drawChart() {
             data = new google.visualization.DataTable();
-            data.addColumn('string', 'Time (IST)');
+            data.addColumn('datetime', 'Time (IST)');
             data.addColumn('number', 'Acceleration (g)');
 
             options = {
                 title: 'Real-Time Acceleration Data',
                 curveType: 'function',
                 legend: { position: 'bottom' },
-                hAxis: { title: 'Time' },
+                hAxis: { title: 'Time (IST)', format: 'hh:mm a' },
                 vAxis: { title: 'Acceleration (g)', minValue: 0 },
                 backgroundColor: '#f5f5f5'
             };
 
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            fetchData(); // Start fetching data
+            fetchData(); // Start fetching real-time data
         }
 
         function fetchData() {
-            const selectedDate = document.getElementById("datePicker").value;
             const ref = database.ref("/acceleration_data");
+            const selectedDate = document.getElementById('datePicker').value; // Get selected date
 
-            ref.orderByKey().on('value', function(snapshot) {
+            ref.orderByKey().limitToLast(50).on('value', (snapshot) => {
                 data.removeRows(0, data.getNumberOfRows());
 
-                snapshot.forEach(function(childSnapshot) {
+                snapshot.forEach(childSnapshot => {
                     const entry = childSnapshot.val();
-                    const timestampUTC = new Date(entry.timestamp);
-
-                    // ✅ Convert UTC to IST (Indian Standard Time)
+                    const timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to milliseconds
+                    
+                    // Convert UTC to IST
                     let timestampIST = new Date(timestampUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
 
-                    // ✅ Format time in 12-hour format (AM/PM)
+                    // Format IST time in 12-hour format (AM/PM)
                     let hours = timestampIST.getHours();
                     let minutes = timestampIST.getMinutes();
                     let ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12 || 12;
+                    hours = hours % 12;
+                    hours = hours ? hours : 12; // Convert 0 to 12
                     minutes = minutes < 10 ? '0' + minutes : minutes;
-                    let formattedTime = '${hours}:${minutes} ${ampm}';
+                    let formattedTime = ${hours}:${minutes} ${ampm};
 
-                    const acceleration = entry.acceleration_g;
-
-                    // ✅ Filter by selected dateif (selectedDate) {
+                    const acceleration = entry.acceleration_g;// If a date is selected, filter data
+                    if (selectedDate) {
                         const selectedDateIST = new Date(selectedDate);
                         if (timestampIST.toDateString() !== selectedDateIST.toDateString()) {
-                            return; // Skip if not the selected date
+                            return;
                         }
                     }
 
-                    data.addRow([formattedTime, acceleration]);
+                    // Add IST time to graph
+                    data.addRow([timestampIST, acceleration]);
                     document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
                 });
 
