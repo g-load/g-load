@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Acceleration Graph</title>
-    
+
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
+
     <!-- Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    
+
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
         h2 { color: #333; }
@@ -24,16 +24,16 @@
 
     <h2>Real-Time Acceleration (X-Axis)</h2>
     <p>Current Acceleration: <span id="acceleration">Loading...</span> g</p>
-    
+
     <label for="datePicker">Select Date: </label>
     <input type="date" id="datePicker" onchange="fetchData()">
-    
+
     <div id="chart_div"></div>
 
     <script>
         // ✅ Firebase Configuration (Replace with your actual Firebase details)
         const firebaseConfig = {
-             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "g-load-dc40b",
@@ -74,10 +74,10 @@
             const selectedDate = document.getElementById("datePicker").value;
             const ref = database.ref("/acceleration_data");
 
-            ref.orderByKey().on('value', (snapshot) => {
+            ref.orderByKey().on('value', function(snapshot) {
                 data.removeRows(0, data.getNumberOfRows());
 
-                snapshot.forEach(childSnapshot => {
+                snapshot.forEach(function(childSnapshot) {
                     const entry = childSnapshot.val();
                     const timestampUTC = new Date(entry.timestamp);
 
