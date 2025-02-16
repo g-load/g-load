@@ -67,33 +67,35 @@
             fetchData();
         }
 
-        function fetchData(selectedDate = null) {
-            const ref = database.ref("/acceleration_data");
+      function fetchData(selectedDate = null) {
+    const ref = database.ref("/acceleration_data");
 
-            ref.orderByKey().on('value', (snapshot) => {
-                data.removeRows(0, data.getNumberOfRows());
+    ref.orderByKey().on('value', (snapshot) => {
+        data.removeRows(0, data.getNumberOfRows());
 
-                snapshot.forEach(childSnapshot => {
-                    const entry = childSnapshot.val();
-                    const timestamp = new Date(entry.timestamp * 1000);  // Convert to milliseconds
-                    const acceleration = entry.acceleration_g;
+        snapshot.forEach(childSnapshot => {
+            const entry = childSnapshot.val();
+            const timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to milliseconds
 
-                    const istTime = new Date(timestamp.getTime() + (5.5 * 60 * 60 * 1000));  // Convert to IST
+            // Convert UTC to IST (UTC + 5:30)
+            const timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
 
-                    if (selectedDate) {
-                        const selectedTimestamp = new Date(selectedDate);
-                        if (istTime.toDateString() !== selectedTimestamp.toDateString()) {
-                            return;
-                        }
-                    }
+            const acceleration = entry.acceleration_g;
 
-                    data.addRow([istTime, acceleration]);
-                    document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
-                });
+            if (selectedDate) {
+                const selectedTimestamp = new Date(selectedDate);
+                if (timestampIST.toDateString() !== selectedTimestamp.toDateString()) {
+                    return; // Skip data that doesn't match selected date
+                }
+            }
 
-                chart.draw(data, options);
-            });
-        }
+            data.addRow([timestampIST, acceleration]);
+            document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
+        });
+
+        chart.draw(data, options);
+    });
+}
 
         document.getElementById('datePicker').addEventListener('change', (event) => {
             fetchData(event.target.value);
