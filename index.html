@@ -67,7 +67,7 @@
             fetchData();
         }
 
-      function fetchData(selectedDate = null) {
+function fetchData(selectedDate = null) {
     const ref = database.ref("/acceleration_data");
 
     ref.orderByKey().on('value', (snapshot) => {
@@ -77,19 +77,29 @@
             const entry = childSnapshot.val();
             const timestampUTC = new Date(entry.timestamp * 1000); // Convert UNIX timestamp to milliseconds
 
-            // Convert UTC to IST (UTC + 5:30)
-            const timestampIST = new Date(timestampUTC.getTime() + (5.5 * 60 * 60 * 1000));
+            // Convert UTC to IST (Indian Standard Time)
+            let timestampIST = new Date(timestampUTC.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+
+            // Format time in 12-hour format (AM/PM)
+            let hours = timestampIST.getHours();
+            let minutes = timestampIST.getMinutes();
+            let ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // The hour '0' should be '12'
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            let formattedTime = ${hours}:${minutes} ${ampm};
 
             const acceleration = entry.acceleration_g;
 
             if (selectedDate) {
-                const selectedTimestamp = new Date(selectedDate);
-                if (timestampIST.toDateString() !== selectedTimestamp.toDateString()) {
-                    return; // Skip data that doesn't match selected date
+                const selectedDateIST = new Date(selectedDate);
+                if (timestampIST.toDateString() !== selectedDateIST.toDateString()) {
+                    return; // Skip if not the selected date
                 }
             }
 
-            data.addRow([timestampIST, acceleration]);
+            // Add formatted time to the graph
+            data.addRow([{ v: timestampIST, f: formattedTime }, acceleration]);
             document.getElementById('acceleration').innerText = acceleration.toFixed(2) + " g";
         });
 
