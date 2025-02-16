@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +11,7 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; }
         #chart_div { width: 100%; height: 400px; }
-        #acceleration { font-size: 24px; font-weight: bold; color: blue; }
+        #acceleration { font-size: 24px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -23,19 +24,19 @@
     <button onclick="loadHistoricalData()">Load Data</button>
 
     <script>
-        // Firebase configuration (Replace with your actual Firebase credentials)
+        // Firebase configuration
         const firebaseConfig = {
-         apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
   authDomain: "g-load-dc40b.firebaseapp.com",
   databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "g-load-dc40b",
   storageBucket: "g-load-dc40b.firebasestorage.app",
   messagingSenderId: "589491451732",
-  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"   
+  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
+        const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         google.charts.load('current', { packages: ['corechart'] });
@@ -61,15 +62,13 @@
                 data = [['Time', 'Acceleration (g)']];
                 snapshot.forEach((childSnapshot) => {
                     let entry = childSnapshot.val();
-                    let timeIST = new Date(entry.timestamp * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+                    let timeIST = new Date(entry.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
                     data.push([timeIST, entry.acceleration_g]);
                     document.getElementById('acceleration').innerText = entry.acceleration_g.toFixed(2);
                 });
 
-                if (data.length > 1) {
-                    let dataTable = google.visualization.arrayToDataTable(data);
-                    chart.draw(dataTable, options);
-                }
+                let dataTable = google.visualization.arrayToDataTable(data);
+                chart.draw(dataTable, options);
             });
         }
 
@@ -80,14 +79,14 @@
                 return;
             }
 
-            let startTime = new Date(selectedDate + "T00:00:00+05:30").getTime() / 1000;
-            let endTime = new Date(selectedDate + "T23:59:59+05:30").getTime() / 1000;
+            let startTime = new Date(selectedDate + "T00:00:00+05:30").getTime();
+            let endTime = new Date(selectedDate + "T23:59:59+05:30").getTime();
 
             db.ref('/acceleration_data').orderByChild("timestamp").startAt(startTime).endAt(endTime).once('value', (snapshot) => {
                 let historyData = [['Time', 'Acceleration (g)']];
                 snapshot.forEach((childSnapshot) => {
                     let entry = childSnapshot.val();
-                    let timeIST = new Date(entry.timestamp * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+                    let timeIST = new Date(entry.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
                     historyData.push([timeIST, entry.acceleration_g]);
                 });
 
@@ -96,7 +95,8 @@
                     return;
                 }
 
-                let historyChart = new google.visualization.LineChart(document.getElementById('chart_div'));
+amałraĵ, [16-02-2025 10:09 AM]
+let historyChart = new google.visualization.LineChart(document.getElementById('chart_div'));
                 let historyTable = google.visualization.arrayToDataTable(historyData);
                 historyChart.draw(historyTable, options);
             });
