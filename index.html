@@ -64,11 +64,10 @@
             chart.draw(data, options);
         }
 
-        function convertToIST(timestamp) {
-            let date = new Date(timestamp * 1000);  
-            date.setHours(date.getHours() + 5, date.getMinutes() + 30);  // Convert to IST
-            return date;
-        }
+      function convertToIST(timestamp) {
+    let date = new Date(timestamp * 1000); // Convert UNIX timestamp (seconds) to Date
+    return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })); 
+}
 
         function updateChart(timestamp, acceleration) {
             data.addRow([convertToIST(timestamp), acceleration]);
@@ -99,32 +98,41 @@
             let startTimestamp = new Date(dateInput).setHours(0, 0, 0, 0) / 1000;  // Midnight start
             let endTimestamp = new Date(dateInput).setHours(23, 59, 59, 999) / 1000;  // Midnight end
 
-            console.log(`Fetching historical data from ${startTimestamp} to ${endTimestamp}`);
+console.log("Fetching historical data from:", startTimestamp, "to", endTimestamp);
 
-            db.ref('/acceleration_data')
-                .orderByChild('timestamp')
-                .startAt(startTimestamp)
-                .endAt(endTimestamp)
-                .once('value', function(snapshot) {
-                    data = new google.visualization.DataTable();
-                    data.addColumn('datetime', 'Time');
-                    data.addColumn('number', 'Acceleration (g)');
+db.ref('/acceleration_data')
+    .orderByChild('timestamp')
+    .startAt(startTimestamp)
+    .endAt(endTimestamp)
+    .once('value', function(snapshot) {
+        if (!snapshot.exists()) {
+            alert("No data found for this date.");
+            return;
+        }
 
-                    let values = [];
-                    snapshot.forEach(function(child) {
-                        let val = child.val();
-                        values.push({ timestamp: val.timestamp, acceleration: val.acceleration_g });
-                    });
+        data = new google.visualization.DataTable();
+        data.addColumn('datetime', 'Time');
+        data.addColumn('number', 'Acceleration (g)');
 
-                    // Sort by timestamp (important for proper graph rendering)
-                    values.sort((a, b) => a.timestamp - b.timestamp);
+        let values = [];
+        snapshot.forEach(function(child) {
+            let val = child.val();
+            values.push({
+                timestamp: val.timestamp,
+                acceleration: val.acceleration_g
+            });
+        });
 
-                    values.forEach(val => {
-                        data.addRow([convertToIST(val.timestamp), val.acceleration]);
-                    });
+        // Sort timestamps before displaying
+        values.sort((a, b) => a.timestamp - b.timestamp);
 
-                    chart.draw(data, options);
-                });
+        values.forEach(val => {
+            console.log("Adding to graph:", val.timestamp, convertToIST(val.timestamp));
+            data.addRow([convertToIST(val.timestamp), val.acceleration]);
+        });
+
+        chart.draw(data, options);
+    });
         }
 
         // Start listening for real-time updates
