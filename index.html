@@ -70,43 +70,20 @@
         }
 
         function listenForRealtimeUpdates() {
-            db.ref('/acceleration_data').limitToLast(1).on('child_added', function(snapshot) {
-                let val = snapshot.val();
-                let acceleration = val.acceleration_g;
-                let timestamp = val.timestamp;
+    console.log("Listening for updates...");
+    db.ref('/acceleration_data').limitToLast(1).on('child_added', function(snapshot) {
+        console.log("New data received:", snapshot.val());
+        
+        let val = snapshot.val();
+        if (!val) return;
+        
+        let acceleration = val.acceleration_g || 0;
+        let timestamp = val.timestamp || 0;
 
-                // Fixed the template string syntax issue
-                document.getElementById('acceleration').innerText = Current Acceleration: ${acceleration} g;
-                updateChart(timestamp, acceleration);
-            });
+        document.getElementById('acceleration').innerText = `Current Acceleration: ${acceleration} g`;
+        updateChart(timestamp, acceleration);
+    });
         }
-
-        function loadHistoricalData() {
-            let dateInput = document.getElementById("datePicker").value;
-            if (!dateInput) {
-                alert("Please select a date!");
-                return;
-            }
-
-            let startTimestamp = new Date(dateInput).setHours(0, 0, 0, 0) / 1000;
-            let endTimestamp = new Date(dateInput).setHours(23, 59, 59, 999) / 1000;
-
-            db.ref('/acceleration_data')
-                .orderByChild('timestamp')
-                .startAt(startTimestamp)
-                .endAt(endTimestamp)
-                .once('value', function(snapshot) {
-                    data = new google.visualization.DataTable();
-                    data.addColumn('datetime', 'Time');
-                    data.addColumn('number', 'Acceleration (g)');snapshot.forEach(function(child) {
-                        let val = child.val();
-                        data.addRow([new Date(val.timestamp * 1000), val.acceleration_g]);
-                    });
-
-                    chart.draw(data, options);
-                });
-        }
-
         // Start listening for real-time updates
         listenForRealtimeUpdates();
     </script>
