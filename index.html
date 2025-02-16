@@ -1,119 +1,98 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-<title>Real-time Acceleration Monitor</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> </head>
+  <title>Real-time Acceleration Monitoring</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #acceleration {
+      font-size: 20px;
+      margin-top: 20px;
+    }
+    #chart_div {
+      width: 100%;
+      height: 400px;
+    }
+  </style>
+</head>
 <body>
+  <h2>Real-time Acceleration Monitoring</h2>
+  <p id="acceleration">Loading...</p>
+  <div id="chart_div"></div>
+  <input type="date" id="date-input" />
+  <button id="load-data-button">Load Historical Data</button>
+  <div id="historical-data-div"></div>
 
-<h1>Real-time Acceleration (g)</h1>
-<div id="accelerationValue">0.00</div>  <canvas id="accelerationChart" width="400" height="200"></canvas>
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+     apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+  authDomain: "g-load-dc40b.firebaseapp.com",
+  databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "g-load-dc40b",
+  storageBucket: "g-load-dc40b.firebasestorage.app",
+  messagingSenderId: "589491451732",
+  appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+    };
 
-<h2>Historical Data</h2>
-<input type="date" id="datePicker">
-<button onclick="loadHistoricalData()">Load Data</button>
-<div id="historicalData"></div>
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-<script>
-  let accelerationValue = document.getElementById("accelerationValue");
-  let accelerationChart = document.getElementById("accelerationChart").getContext('2d');
-  let datePicker = document.getElementById("datePicker");
-  let historicalDataDiv = document.getElementById("historicalData");
+    // Google Charts setup
+    google.charts.load('current', {packages: ['corechart', 'line']});
+    google.charts.setOnLoadCallback(drawChart);
 
-  let chart = new Chart(accelerationChart, {
-    type: 'line',
-    data: {
-      labels: [], // Time labels
-      datasets: [{
-        label: 'Acceleration (g)',
-        data: [], // Acceleration data
-        borderColor: 'blue',
-        borderWidth: 1,
-        tension: 0.4 // Smooths the line
-      }]
-    },
-    options: {
-      scales: {
-        x: {  // Time axis
-          type: 'time', // Important for time series data
-          time: {
-            parser: 'seconds', // Adjust if your timestamps are in milliseconds
-            unit: 'second',  // or 'minute', 'hour', etc. as needed
-            displayFormats: {
-              second: 'h:mm:ss a' // Customize time format
-            }
-          },
-          title: {
-            display: true,
-            text: 'Indian Time (IST)'
-          }
-        },
-        y: {
-          beginAtZero: false, // Don't start y-axis at 0 if not needed
-          title: {
-            display: true,
-            text: 'Acceleration (g)'
-          }
-        }
-      }
-    }
-  });
+    let data = new google.visualization.DataTable();
+    data.addColumn('datetime', 'Time');
+    data.addColumn('number', 'Acceleration (g)');
 
-  // Function to update the chart and acceleration value
-  function updateAcceleration(time, acceleration) {
-    accelerationValue.textContent = acceleration.toFixed(2); // Display with 2 decimal places
+    function drawChart() {
+      var options = {
+        title: 'Real-time Acceleration Data',
+        curveType: 'function',
+        legend: { position: 'bottom' },
+        hAxis: { title: 'Time' },
+        vAxis: { title: 'Acceleration (g)' },
+        colors: ['#1b9e77']
+      };
 
-    chart.data.labels.push(time);
-    chart.data.datasets[0].data.push(acceleration);
+      var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-    if (chart.data.labels.length > 10) { // Keep only last 10 data points on the graph
-      chart.data.labels.shift();
-      chart.data.datasets[0].data.shift();
-    }
-    chart.update();
-  }
-
-  // Simulated data (Replace with actual data from Firebase)
-  // This is how you would receive data from your ESP8266/Firebase
-  // You would use a library like the Firebase JavaScript SDK to read data in real-time.
-
-  // Example real-time data handling (replace with your Firebase setup)
-  // Assuming you have a Firebase listener set up to get new acceleration data
-  // and it calls a function named handleNewAccelerationData(timestamp, acceleration):
-
-  function handleNewAccelerationData(timestamp, acceleration) {
-    // Convert the Firebase timestamp (likely a number) to a Date object
-    let date = new Date(timestamp * 1000); // *1000 if timestamp is in seconds
-    let istTime = date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }); // Indian Time
-
-    updateAcceleration(istTime, acceleration);
-  }
-
-
-  function loadHistoricalData() {
-    let selectedDate = datePicker.value;
-    if (!selectedDate) {
-      alert("Please select a date.");
-      return;
+      database.ref('/acceleration_data').limitToLast(20).on('value', (snapshot) => {
+        data.removeRows(0, data.getNumberOfRows());
+        snapshot.forEach((childSnapshot) => {
+          let entry = childSnapshot.val();
+          let time = new Date(entry.timestamp * 1000);
+          let acceleration = entry.acceleration_g;
+          data.addRow([time, acceleration]);
+          document.getElementById("acceleration").innerHTML = `Latest Acceleration: <b>${acceleration} g</b> at ${time.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
+        });
+        chart.draw(data, options);
+      });
     }
 
-    // You would use the Firebase JavaScript SDK to fetch historical data
-    // based on the selectedDate.  This is a placeholder:
-    historicalDataDiv.innerHTML = "Fetching historical data for " + selectedDate + "...";
-
-    // Example:  Replace with your Firebase data retrieval logic
-    // ... (Your Firebase code to retrieve data for the selected date) ...
-
-    // After retrieving the data, display it in the historicalDataDiv
-    // Example:
-    // let historicalData = "Data from Firebase for " + selectedDate + ": ...";
-    // historicalDataDiv.innerHTML = historicalData;
-  }
-
-  // Initialize datepicker to today's date
-  datePicker.valueAsDate = new Date();
-
-
-</script>
-
+    document.getElementById("load-data-button").addEventListener("click", () => {
+      let dateInput = document.getElementById("date-input");
+      let date = dateInput.valueAsDate;
+      let timestamp = date.getTime() / 1000;
+      database.ref('/acceleration_data').orderByChild("timestamp").startAt(timestamp).endAt(timestamp + 86400).on('value', (snapshot) => {
+        let historicalDataDiv = document.getElementById("historical-data-div");
+        historicalDataDiv.innerHTML = "";
+        snapshot.forEach((childSnapshot) => {
+          let entry = childSnapshot.val();
+          let time = new Date(entry.timestamp * 1000);
+          let acceleration = entry.acceleration_g;
+          historicalDataDiv.innerHTML += `<p>Acceleration: ${acceleration} g at ${time.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>`;
+        });
+      });
+    });
+  </script>
 </body>
 </html>
