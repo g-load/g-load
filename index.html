@@ -22,7 +22,7 @@
             width: 100%;
             height: 400px;
         }
-        #datePicker {
+        #datePicker, #startTime, #endTime {
             padding: 5px;
             font-size: 16px;
         }
@@ -41,8 +41,10 @@
     <h3>Real-time Acceleration Graph (IST)</h3>
     <div id="chart_div" class="chart-container"></div>
 
-    <h3>Select Date for Historical Data</h3>
+    <h3>Select Date and Time for Historical Data</h3>
     <input type="date" id="datePicker">
+    <input type="time" id="startTime" value="00:00">
+    <input type="time" id="endTime" value="23:59">
     <button onclick="loadHistoricalData()">Load Historical Data</button>
 
     <h3>Historical Acceleration Graph (IST)</h3>
@@ -52,12 +54,12 @@
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-    authDomain: "g-load-dc40b.firebaseapp.com",
-    databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "g-load-dc40b",
-    storageBucket: "g-load-dc40b.firebasestorage.app",
-    messagingSenderId: "589491451732",
-    appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+            authDomain: "g-load-dc40b.firebaseapp.com",
+            databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "g-load-dc40b",
+            storageBucket: "g-load-dc40b.firebasestorage.app",
+            messagingSenderId: "589491451732",
+            appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // Initialize Firebase
@@ -79,12 +81,10 @@
 
         // Function to Draw Both Charts
         function drawCharts() {
-            // Real-time Graph
             realTimeData = new google.visualization.DataTable();
             realTimeData.addColumn('datetime', 'Time (IST)');
             realTimeData.addColumn('number', 'Acceleration (g)');
 
-            // Historical Graph
             historyData = new google.visualization.DataTable();
             historyData.addColumn('datetime', 'Time (IST)');
             historyData.addColumn('number', 'Acceleration (g)');
@@ -108,7 +108,7 @@
         function fetchRealTimeData() {
             db.ref('/acceleration_data').limitToLast(50).on('value', snapshot => {
                 let values = [];
-snapshot.forEach(child => {
+                snapshot.forEach(child => {
                     let val = child.val();
                     if (val.timestamp && val.acceleration_g) {
                         values.push({
@@ -118,15 +118,12 @@ snapshot.forEach(child => {
                     }
                 });
 
-                // Sort timestamps to avoid graph glitches
                 values.sort((a, b) => a.time - b.time);
 
-                // Update current acceleration display
                 if (values.length > 0) {
                     document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(2);
                 }
 
-                // Update Real-time Graph
                 realTimeData = new google.visualization.DataTable();
                 realTimeData.addColumn('datetime', 'Time (IST)');
                 realTimeData.addColumn('number', 'Acceleration (g)');
@@ -139,11 +136,19 @@ snapshot.forEach(child => {
             });
         }
 
-        // Function to Load Historical Data
+        // Function to Load Historical Data with Date and Time Selection
         function loadHistoricalData() {
             let selectedDate = document.getElementById('datePicker').value;
-            let startOfDay = new Date(selectedDate + "T00:00:00+05:30").getTime() / 1000;
-            let endOfDay = startOfDay + 86400;
+            let startTime = document.getElementById('startTime').value;
+            let endTime = document.getElementById('endTime').value;
+
+            if (!selectedDate || !startTime || !endTime) {
+                alert("Please select a valid date and time range.");
+                return;
+            }
+
+            let startOfDay = new Date(`${selectedDate}T${startTime}:00+05:30`).getTime() / 1000;
+            let endOfDay = new Date(`${selectedDate}T${endTime}:59+05:30`).getTime() / 1000;
 
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
@@ -151,7 +156,7 @@ snapshot.forEach(child => {
                 .endAt(endOfDay)
                 .once('value', snapshot => {
                     if (!snapshot.exists()) {
-                        alert("No data found for this date.");
+                        alert("No data found for this date and time range.");
                         return;
                     }
 
@@ -166,7 +171,6 @@ snapshot.forEach(child => {
 
                     values.sort((a, b) => a.time - b.time);
 
-                    // Update Historical Graph
                     historyData = new google.visualization.DataTable();
                     historyData.addColumn('datetime', 'Time (IST)');
                     historyData.addColumn('number', 'Acceleration (g)');
