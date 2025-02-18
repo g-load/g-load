@@ -38,7 +38,7 @@
     <h2>Real-time Acceleration Data</h2>
     <h3>Current Acceleration: <span id="currentAcceleration">--</span> g</h3>
 
-    <h3>Real-time Acceleration Graph (IST)</h3>
+    <h3>Real-time Acceleration Graph (IST) - Last 24 Hours</h3>
     <div id="chart_div" class="chart-container"></div>
 
     <h3>Select Date and Time for Historical Data</h3>
@@ -75,8 +75,7 @@
         // Function to Convert to IST Properly
         function convertToIST(timestamp) {
             let date = new Date(timestamp * 1000);
-            let istDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-            return istDate;
+            return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
         }
 
         // Function to Draw Both Charts
@@ -104,36 +103,42 @@
             fetchRealTimeData();
         }
 
-        // Function to Fetch Real-time Data
+        // Function to Fetch Real-time Data (Last 24 Hours)
         function fetchRealTimeData() {
-            db.ref('/acceleration_data').limitToLast(50).on('value', snapshot => {
-                let values = [];
-                snapshot.forEach(child => {
-                    let val = child.val();
-                    if (val.timestamp && val.acceleration_g) {
-                        values.push({
-                            time: convertToIST(val.timestamp),
-                            acceleration: val.acceleration_g
-                        });
+            let now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
+            let past24Hours = now - 86400; // 24 hours ago in seconds
+
+            db.ref('/acceleration_data')
+                .orderByChild('timestamp')
+                .startAt(past24Hours) // Only fetch data from the last 24 hours
+                .on('value', snapshot => {
+                    let values = [];
+                    snapshot.forEach(child => {
+                        let val = child.val();
+                        if (val.timestamp && val.acceleration_g) {
+                            values.push({
+                                time: convertToIST(val.timestamp),
+                                acceleration: val.acceleration_g
+                            });
+                        }
+                    });
+
+                    values.sort((a, b) => a.time - b.time);
+
+                    if (values.length > 0) {
+                        document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(2);
                     }
+
+                    realTimeData = new google.visualization.DataTable();
+                    realTimeData.addColumn('datetime', 'Time (IST)');
+                    realTimeData.addColumn('number', 'Acceleration (g)');
+
+                    values.forEach(entry => {
+                        realTimeData.addRow([entry.time, entry.acceleration]);
+                    });
+
+                    realTimeChart.draw(realTimeData, options);
                 });
-
-                values.sort((a, b) => a.time - b.time);
-
-                if (values.length > 0) {
-                    document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(2);
-                }
-
-                realTimeData = new google.visualization.DataTable();
-                realTimeData.addColumn('datetime', 'Time (IST)');
-                realTimeData.addColumn('number', 'Acceleration (g)');
-
-                values.forEach(entry => {
-                    realTimeData.addRow([entry.time, entry.acceleration]);
-                });
-
-                realTimeChart.draw(realTimeData, options);
-            });
         }
 
         // Function to Load Historical Data with Date and Time Selection
