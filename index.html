@@ -187,7 +187,7 @@ db.ref('/acceleration_data')
             let csvContent = "Time (IST),Acceleration (g)\n";
             historicalValues.forEach(entry => {
                 let formattedTime = entry.time.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-                csvContent += ${formattedTime},${entry.acceleration.toFixed(3)}\n;
+                csvContent += '${formattedTime},${entry.acceleration.toFixed(3)}\n';
             });
 
             let blob = new Blob([csvContent], { type: "text/csv" });
