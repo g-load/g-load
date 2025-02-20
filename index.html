@@ -49,13 +49,13 @@
 <script>
     // Firebase Configuration
     const firebaseConfig = {
-        apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
-        authDomain: "g-load-dc40b.firebaseapp.com",
-        databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "g-load-dc40b",
-        storageBucket: "g-load-dc40b.firebasestorage.app",
-        messagingSenderId: "589491451732",
-        appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        databaseURL: "YOUR_DATABASE_URL",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
     };
 
     // Initialize Firebase
@@ -68,13 +68,11 @@
 
     let realTimeChart, historyChart, realTimeData, historyData, options, historicalValues = [];
 
-    // Convert to IST
     function convertToIST(timestamp) {
         let date = new Date(timestamp * 1000);
         return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
     }
 
-    // Draw Charts
     function drawCharts() {
         realTimeData = new google.visualization.DataTable();
         realTimeData.addColumn('datetime', 'Time (IST)');
@@ -99,7 +97,6 @@
         fetchRealTimeData();
     }
 
-    // Fetch Real-time Data
     function fetchRealTimeData() {
         let now = Math.floor(Date.now() / 1000);
         let past24Hours = now - 86400;
@@ -112,45 +109,55 @@
                 snapshot.forEach(child => {
                     let val = child.val();
                     if (val.timestamp && val.acceleration_g) {
-                        values.push({ time: convertToIST(val.timestamp), acceleration: parseFloat(val.acceleration_g).toFixed(3) });
+                        values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
                     }
-                });
-
-                values.sort((a, b) => a.time - b.time);
+                });values.sort((a, b) => a.time - b.time);
                 if (values.length > 0) {
-                    document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration;
+                    document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(3);
                 }
 
                 realTimeData = new google.visualization.DataTable();
                 realTimeData.addColumn('datetime', 'Time (IST)');
                 realTimeData.addColumn('number', 'Acceleration (g)');
 
-                values.forEach(entry => realTimeData.addRow([entry.time, parseFloat(entry.acceleration)]));
+                values.forEach(entry => realTimeData.addRow([entry.time, parseFloat(entry.acceleration.toFixed(3))]));
 
                 realTimeChart.draw(realTimeData, options);
             });
     }
 
-    // Function to Download Data as CSV
-    function downloadCSV() {
-        if (historicalValues.length === 0) {
-            alert("No historical data to download. Please load historical data first.");
+    function loadHistoricalData() {
+        let selectedDate = document.getElementById('datePicker').value;
+        let startTime = document.getElementById('startTime').value;
+        let endTime = document.getElementById('endTime').value;
+
+        if (!selectedDate  !startTime  !endTime) {
+            alert("Please select a valid date and time range.");
             return;
         }
 
-        let csvContent = "Time (IST),Acceleration (g)\n";
-        historicalValues.forEach(entry => {
-            let formattedTime = entry.time.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-            csvContent += `${formattedTime},${parseFloat(entry.acceleration).toFixed(3)}\n`;
-        });
+        let startTimestamp = new Date(${selectedDate}T${startTime}:00+05:30).getTime() / 1000;
+        let endTimestamp = new Date(${selectedDate}T${endTime}:59+05:30).getTime() / 1000;
 
-        let blob = new Blob([csvContent], { type: "text/csv" });
-        let link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `Acceleration_Data_${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        db.ref('/acceleration_data')
+            .orderByChild('timestamp')
+            .startAt(startTimestamp)
+            .endAt(endTimestamp)
+            .once('value', snapshot => {
+                historicalValues = [];
+                snapshot.forEach(child => {
+                    let val = child.val();
+                    historicalValues.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
+                });
+
+                historyData = new google.visualization.DataTable();
+                historyData.addColumn('datetime', 'Time (IST)');
+                historyData.addColumn('number', 'Acceleration (g)');
+
+                historicalValues.forEach(entry => historyData.addRow([entry.time, parseFloat(entry.acceleration.toFixed(3))]));
+
+                historyChart.draw(historyData, options);
+            });
     }
 </script>
 
