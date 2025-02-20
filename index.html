@@ -121,15 +121,16 @@ db.ref('/acceleration_data')
                     });
 
                     values.sort((a, b) => a.time - b.time);
-                    if (values.length > 0) {
-                        document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(3);
-                    }
+                  if (values.length > 0 && values[values.length - 1].acceleration !== undefined) {
+    document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(3);
+}
 
                     realTimeData = new google.visualization.DataTable();
                     realTimeData.addColumn('datetime', 'Time (IST)');
                     realTimeData.addColumn('number', 'Acceleration (g)');
 
-                    values.forEach(entry => realTimeData.addRow([entry.time, entry.acceleration]));
+                    values.forEach(entry => realTimeData.addRow([entry.time, parseFloat(entry.acceleration)]));
+historicalValues.forEach(entry => historyData.addRow([entry.time, parseFloat(entry.acceleration)]));
 
                     realTimeChart.draw(realTimeData, options);
                 });
@@ -187,7 +188,7 @@ db.ref('/acceleration_data')
             let csvContent = "Time (IST),Acceleration (g)\n";
             historicalValues.forEach(entry => {
                 let formattedTime = entry.time.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-                csvContent += '${formattedTime},${entry.acceleration.toFixed(3)}\n';
+                csvContent += '${formattedTime},${parseFloat(entry.acceleration).toFixed(3)}\n';
             });
 
             let blob = new Blob([csvContent], { type: "text/csv" });
