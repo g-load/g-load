@@ -111,6 +111,7 @@
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
                 .startAt(past24Hours)
+                .limitToLast(1000)  // Ensure latest data is fetched
                 .on('value', snapshot => {
                     let values = [];
                     snapshot.forEach(child => {
@@ -135,7 +136,7 @@
                 });
         }
 
-        // Load Historical Data
+        // Load Historical Data with Fixes
         function loadHistoricalData() {
             let selectedDate = document.getElementById('datePicker').value;
             let startTime = document.getElementById('startTime').value;
@@ -146,15 +147,16 @@
                 return;
             }
 
-            let startTimestamp = new Date(`${selectedDate}T${startTime}:00+05:30`).getTime() / 1000;
-            let endTimestamp = new Date(`${selectedDate}T${endTime}:59+05:30`).getTime() / 1000;
+            let startTimestamp = new Date(`${selectedDate}T${startTime}:00+05:30`).getTime() / 1000 - 60; 
+            let endTimestamp = new Date(`${selectedDate}T${endTime}:59+05:30`).getTime() / 1000 + 60;
 
-            console.log("Fetching data from:", new Date(startTimestamp * 1000), "to", new Date(endTimestamp * 1000));
+            console.log(`Fetching data from: ${new Date(startTimestamp * 1000)} to ${new Date(endTimestamp * 1000)}`);
 
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
                 .startAt(startTimestamp)
                 .endAt(endTimestamp)
+                .limitToLast(1000)
                 .once('value', snapshot => {
                     if (!snapshot.exists()) {
                         alert("No data found for this date and time range.");
@@ -164,10 +166,10 @@
                     historicalValues = [];
                     snapshot.forEach(child => {
                         let val = child.val();
-                        historicalValues.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
+                        if (val.timestamp && val.acceleration_g) {
+                            historicalValues.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
+                        }
                     });
-
-                    console.log("Historical Data Found:", historicalValues);
 
                     historicalValues.sort((a, b) => a.time - b.time);
 
@@ -179,26 +181,6 @@
 
                     historyChart.draw(historyData, options);
                 });
-        }
-
-        // Download CSV
-        function downloadCSV() {
-            if (historicalValues.length === 0) {
-                alert("No historical data to download. Please load historical data first.");
-                return;
-            }
-
-            let csvContent = "Time (IST),Acceleration (g)\n";
-            historicalValues.forEach(entry => {
-                let formattedTime = entry.time.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-                csvContent += `${formattedTime},${entry.acceleration.toFixed(3)}\n`;
-            });
-
-            let blob = new Blob([csvContent], { type: "text/csv" });
-            let link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `Acceleration_Data_${new Date().toISOString().slice(0, 10)}.csv`;
-            link.click();
         }
     </script>
 </body>
