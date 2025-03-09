@@ -111,7 +111,7 @@
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
                 .startAt(past24Hours)
-                .limitToLast(1000)  // Ensure latest data is fetched
+                .limitToLast(1000)
                 .on('value', snapshot => {
                     let values = [];
                     snapshot.forEach(child => {
@@ -121,7 +121,9 @@
                         }
                     });
 
+                    console.log(`Real-time Data Count: ${values.length}`);
                     values.sort((a, b) => a.time - b.time);
+
                     if (values.length > 0) {
                         document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(3);
                     }
@@ -136,7 +138,7 @@
                 });
         }
 
-        // Load Historical Data with Fixes
+        // Load Historical Data
         function loadHistoricalData() {
             let selectedDate = document.getElementById('datePicker').value;
             let startTime = document.getElementById('startTime').value;
@@ -147,16 +149,16 @@
                 return;
             }
 
-            let startTimestamp = new Date(`${selectedDate}T${startTime}:00+05:30`).getTime() / 1000 - 60; 
-            let endTimestamp = new Date(`${selectedDate}T${endTime}:59+05:30`).getTime() / 1000 + 60;
+            let startTimestamp = new Date(`${selectedDate}T${startTime}:00.000Z`).getTime() / 1000 - 120; 
+            let endTimestamp = new Date(`${selectedDate}T${endTime}:59.999Z`).getTime() / 1000 + 120;
 
-            console.log(`Fetching data from: ${new Date(startTimestamp * 1000)} to ${new Date(endTimestamp * 1000)}`);
+            console.log(`Fetching Historical Data: ${new Date(startTimestamp * 1000)} - ${new Date(endTimestamp * 1000)}`);
 
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
                 .startAt(startTimestamp)
                 .endAt(endTimestamp)
-                .limitToLast(1000)
+                .limitToLast(2000)
                 .once('value', snapshot => {
                     if (!snapshot.exists()) {
                         alert("No data found for this date and time range.");
@@ -171,7 +173,7 @@
                         }
                     });
 
-                    historicalValues.sort((a, b) => a.time - b.time);
+                    console.log(`Historical Data Count: ${historicalValues.length}`);
 
                     historyData = new google.visualization.DataTable();
                     historyData.addColumn('datetime', 'Time (IST)');
