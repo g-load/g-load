@@ -72,7 +72,7 @@
 
         let realTimeChart, historyChart, realTimeData, historyData, options, historicalValues = [];
 
-        // Convert to IST
+        // Convert UTC timestamp to IST
         function convertToIST(timestamp) {
             let date = new Date(timestamp * 1000);
             return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
@@ -149,6 +149,8 @@
             let startTimestamp = new Date(`${selectedDate}T${startTime}:00+05:30`).getTime() / 1000;
             let endTimestamp = new Date(`${selectedDate}T${endTime}:59+05:30`).getTime() / 1000;
 
+            console.log("Fetching data from:", new Date(startTimestamp * 1000), "to", new Date(endTimestamp * 1000));
+
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
                 .startAt(startTimestamp)
@@ -165,6 +167,8 @@
                         historicalValues.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
                     });
 
+                    console.log("Historical Data Found:", historicalValues);
+
                     historicalValues.sort((a, b) => a.time - b.time);
 
                     historyData = new google.visualization.DataTable();
@@ -177,7 +181,7 @@
                 });
         }
 
-        // Function to Download Data as CSV
+        // Download CSV
         function downloadCSV() {
             if (historicalValues.length === 0) {
                 alert("No historical data to download. Please load historical data first.");
@@ -194,9 +198,7 @@
             let link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             link.download = `Acceleration_Data_${new Date().toISOString().slice(0, 10)}.csv`;
-            document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
         }
     </script>
 </body>
