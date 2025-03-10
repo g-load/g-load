@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-time & Historical Acceleration Data</title>
-    
+
     <!-- Google Charts -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -71,14 +71,12 @@
         google.charts.setOnLoadCallback(drawCharts);
 
         let realTimeChart, historyChart, realTimeData, historyData, options, historicalValues = [];
+        let realTimeValues = [];
 
-        // Convert to IST
         function convertToIST(timestamp) {
-            let date = new Date(timestamp * 1000);
-            return new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+            return new Date(timestamp * 1000);  // Assuming timestamps are already in UTC
         }
 
-        // Draw Charts
         function drawCharts() {
             realTimeData = new google.visualization.DataTable();
             realTimeData.addColumn('datetime', 'Time (IST)');
@@ -103,39 +101,43 @@
             fetchRealTimeData();
         }
 
-        // Fetch Real-time Data
         function fetchRealTimeData() {
             let now = Math.floor(Date.now() / 1000);
             let past24Hours = now - 86400;
 
+            realTimeValues = []; // Clear old values
+
             db.ref('/acceleration_data')
                 .orderByChild('timestamp')
                 .startAt(past24Hours)
-                .on('value', snapshot => {
-                    let values = [];
-                    snapshot.forEach(child => {
-                        let val = child.val();
-                        if (val.timestamp && val.acceleration_g) {
-                            values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
-                        }
-                    });
+                .on('child_added', snapshot => {
+                    let val = snapshot.val();
+                    if (val.timestamp && val.acceleration_g) {
+                        let dataPoint = { time: convertToIST(val.timestamp), acceleration: val.acceleration_g };
+                        realTimeValues.push(dataPoint);
 
-                    values.sort((a, b) => a.time - b.time);
-                    if (values.length > 0) {
-                        document.getElementById("currentAcceleration").innerText = values[values.length - 1].acceleration.toFixed(3);
+                        // Keep only last 24 hours of data
+                        realTimeValues = realTimeValues.filter(entry => entry.time.getTime() >= (Date.now() - 86400000));
+
+                        updateRealTimeChart();
                     }
-
-                    realTimeData = new google.visualization.DataTable();
-                    realTimeData.addColumn('datetime', 'Time (IST)');
-                    realTimeData.addColumn('number', 'Acceleration (g)');
-
-                    values.forEach(entry => realTimeData.addRow([entry.time, entry.acceleration]));
-
-                    realTimeChart.draw(realTimeData, options);
                 });
         }
 
-        // Load Historical Data
+        function updateRealTimeChart() {
+            if (realTimeValues.length > 0) {
+                document.getElementById("currentAcceleration").innerText = realTimeValues[realTimeValues.length - 1].acceleration.toFixed(3);
+            }
+
+            realTimeData = new google.visualization.DataTable();
+            realTimeData.addColumn('datetime', 'Time (IST)');
+            realTimeData.addColumn('number', 'Acceleration (g)');
+
+            realTimeValues.forEach(entry => realTimeData.addRow([entry.time, entry.acceleration]));
+
+            realTimeChart.draw(realTimeData, options);
+        }
+
         function loadHistoricalData() {
             let selectedDate = document.getElementById('datePicker').value;
             let startTime = document.getElementById('startTime').value;
@@ -154,30 +156,26 @@
                 .startAt(startTimestamp)
                 .endAt(endTimestamp)
                 .once('value', snapshot => {
-                    if (!snapshot.exists()) {
-                        alert("No data found for this date and time range.");
-                        return;
-                    }
-
                     historicalValues = [];
                     snapshot.forEach(child => {
                         let val = child.val();
                         historicalValues.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
                     });
 
-                    historicalValues.sort((a, b) => a.time - b.time);
-
-                    historyData = new google.visualization.DataTable();
-                    historyData.addColumn('datetime', 'Time (IST)');
-                    historyData.addColumn('number', 'Acceleration (g)');
-
-                    historicalValues.forEach(entry => historyData.addRow([entry.time, entry.acceleration]));
-
-                    historyChart.draw(historyData, options);
+                    updateHistoryChart();
                 });
         }
 
-        // Function to Download Data as CSV
+        function updateHistoryChart() {
+            historyData = new google.visualization.DataTable();
+            historyData.addColumn('datetime', 'Time (IST)');
+            historyData.addColumn('number', 'Acceleration (g)');
+
+            historicalValues.forEach(entry => historyData.addRow([entry.time, entry.acceleration]));
+
+            historyChart.draw(historyData, options);
+        }
+
         function downloadCSV() {
             if (historicalValues.length === 0) {
                 alert("No historical data to download. Please load historical data first.");
