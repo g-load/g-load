@@ -30,6 +30,21 @@
             cursor: pointer;
             margin: 5px;
         }
+        #suddenAccelerationHistory {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #suddenAccelerationHistory th, #suddenAccelerationHistory td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        #suddenAccelerationHistory th {
+            background-color: #f2f2f2;
+        }
     </style>
 </head>
 <body>
@@ -46,10 +61,17 @@
     <input type="time" id="startTime" value="00:00">
     <input type="time" id="endTime" value="23:59">
     <button onclick="loadHistoricalData()">Load Historical Data</button>
-    <button onclick="downloadCSV()">Download Data</button>
 
     <h3>Historical Acceleration Graph (IST)</h3>
     <div id="history_chart_div" class="chart-container"></div>
+
+    <h3>⚠️ Sudden Acceleration History (Above 0.4g)</h3>
+    <table id="suddenAccelerationHistory">
+        <tr>
+            <th>Time (IST)</th>
+            <th>Acceleration (g)</th>
+        </tr>
+    </table>
 
     <script>
         // Firebase Configuration
@@ -71,7 +93,7 @@
         google.charts.load('current', { 'packages': ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawCharts);
 
-        let realTimeChart, historyChart, realTimeData, historyData, options, historicalValues = [];
+        let realTimeChart, historyChart, realTimeData, historyData, options;
 
         // Convert to IST
         function convertToIST(timestamp) {
@@ -84,12 +106,12 @@
             realTimeData = new google.visualization.DataTable();
             realTimeData.addColumn('datetime', 'Time (IST)');
             realTimeData.addColumn('number', 'Acceleration (g)');
-            realTimeData.addColumn({ type: 'string', role: 'style' }); // Style column
+            realTimeData.addColumn({ type: 'string', role: 'style' });
 
             historyData = new google.visualization.DataTable();
             historyData.addColumn('datetime', 'Time (IST)');
             historyData.addColumn('number', 'Acceleration (g)');
-            historyData.addColumn({ type: 'string', role: 'style' }); // Style column
+            historyData.addColumn({ type: 'string', role: 'style' });
 
             options = {
                 title: 'Acceleration Data',
@@ -116,10 +138,20 @@
                 .startAt(past24Hours)
                 .on('value', snapshot => {
                     let values = [];
+                    let suddenAccelerationHistory = document.getElementById("suddenAccelerationHistory");
+                    suddenAccelerationHistory.innerHTML = `<tr><th>Time (IST)</th><th>Acceleration (g)</th></tr>`; // Reset Table
+
                     snapshot.forEach(child => {
                         let val = child.val();
                         if (val.timestamp && val.acceleration_g) {
-                            values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
+                            let timeIST = convertToIST(val.timestamp);
+                            values.push({ time: timeIST, acceleration: val.acceleration_g });
+
+                            if (val.acceleration_g > 0.4) {
+                                let row = suddenAccelerationHistory.insertRow();
+                                row.insertCell(0).innerText = timeIST.toLocaleString();
+                                row.insertCell(1).innerText = val.acceleration_g.toFixed(3);
+                            }
                         }
                     });
 
@@ -142,45 +174,6 @@
                     });
 
                     realTimeChart.draw(realTimeData, options);
-                });
-        }
-
-        // Load Historical Data
-        function loadHistoricalData() {
-            let selectedDate = document.getElementById('datePicker').value;
-            let startTime = document.getElementById('startTime').value;
-            let endTime = document.getElementById('endTime').value;
-
-            if (!selectedDate || !startTime || !endTime) {
-                alert("Please select a valid date and time range.");
-                return;
-            }
-
-            let startTimestamp = new Date(`${selectedDate}T${startTime}:00+05:30`).getTime() / 1000;
-            let endTimestamp = new Date(`${selectedDate}T${endTime}:59+05:30`).getTime() / 1000;
-
-            db.ref('/acceleration_data')
-                .orderByChild('timestamp')
-                .startAt(startTimestamp)
-                .endAt(endTimestamp)
-                .once('value', snapshot => {
-                    if (!snapshot.exists()) {
-                        alert("No data found for this date and time range.");
-                        return;
-                    }
-
-                    historyData = new google.visualization.DataTable();
-                    historyData.addColumn('datetime', 'Time (IST)');
-                    historyData.addColumn('number', 'Acceleration (g)');
-                    historyData.addColumn({ type: 'string', role: 'style' });
-
-                    snapshot.forEach(child => {
-                        let val = child.val();
-                        let color = val.acceleration_g > 0.4 ? 'color: red' : 'color: blue';
-                        historyData.addRow([convertToIST(val.timestamp), val.acceleration_g, color]);
-                    });
-
-                    historyChart.draw(historyData, options);
                 });
         }
     </script>
