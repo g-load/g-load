@@ -36,6 +36,7 @@
 
     <h2>Real-time Acceleration Data</h2>
     <h3>Current Acceleration: <span id="currentAcceleration">--</span> g</h3>
+    <p id="notification" style="color: red; font-weight: bold;"></p>
 
     <h3>Real-time Acceleration Graph (IST) - Last 24 Hours</h3>
     <div id="chart_div" class="chart-container"></div>
@@ -45,6 +46,7 @@
     <input type="time" id="startTime" value="00:00">
     <input type="time" id="endTime" value="23:59">
     <button onclick="loadHistoricalData()">Load Historical Data</button>
+    <button onclick="downloadCSV()">Download Data</button>
 
     <h3>Historical Acceleration Graph (IST)</h3>
     <div id="history_chart_div" class="chart-container"></div>
@@ -52,13 +54,13 @@
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyDSiocR1RLgQwGzgBiKcr_W7NBJxQSbyH8",
+            authDomain: "g-load-dc40b.firebaseapp.com",
+            databaseURL: "https://g-load-dc40b-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "g-load-dc40b",
+            storageBucket: "g-load-dc40b.firebasestorage.app",
+            messagingSenderId: "589491451732",
+            appId: "1:589491451732:web:b36abd93b770651dfd7ac1"
         };
 
         // Initialize Firebase
@@ -82,10 +84,12 @@
             realTimeData = new google.visualization.DataTable();
             realTimeData.addColumn('datetime', 'Time (IST)');
             realTimeData.addColumn('number', 'Acceleration (g)');
+            realTimeData.addColumn({ type: 'string', role: 'style' });
 
             historyData = new google.visualization.DataTable();
             historyData.addColumn('datetime', 'Time (IST)');
             historyData.addColumn('number', 'Acceleration (g)');
+            historyData.addColumn({ type: 'string', role: 'style' });
 
             options = {
                 title: 'Acceleration Data',
@@ -93,9 +97,6 @@
                 legend: { position: 'bottom' },
                 hAxis: { title: 'Time (IST)', format: 'hh:mm a' },
                 vAxis: { title: 'Acceleration (g)', minValue: 0 },
-                series: {
-                    0: { color: 'blue' },  // Default color
-                },
                 height: 400
             };
 
@@ -115,31 +116,35 @@
                 .startAt(past24Hours)
                 .on('value', snapshot => {
                     let values = [];
-                    let colors = [];
-
                     snapshot.forEach(child => {
                         let val = child.val();
                         if (val.timestamp && val.acceleration_g) {
-                            let time = convertToIST(val.timestamp);
-                            values.push([time, val.acceleration_g]);
-                            colors.push(val.acceleration_g > 0.4 ? 'red' : 'blue');
+                            values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
                         }
                     });
 
-                    values.sort((a, b) => a[0] - b[0]);
+                    values.sort((a, b) => a.time - b.time);
                     if (values.length > 0) {
-                        document.getElementById("currentAcceleration").innerText = values[values.length - 1][1].toFixed(3);
+                        let latestAcceleration = values[values.length - 1].acceleration;
+                        document.getElementById("currentAcceleration").innerText = latestAcceleration.toFixed(3);
+                        
+                        // Display notification if acceleration > 0.4g
+                        if (latestAcceleration > 0.4) {
+                            document.getElementById("notification").innerText = "Sudden acceleration detected!";
+                        } else {
+                            document.getElementById("notification").innerText = "";
+                        }
                     }
 
                     realTimeData = new google.visualization.DataTable();
                     realTimeData.addColumn('datetime', 'Time (IST)');
                     realTimeData.addColumn('number', 'Acceleration (g)');
+                    realTimeData.addColumn({ type: 'string', role: 'style' });
 
-                    values.forEach((entry, index) => {
-                        realTimeData.addRow([entry[0], entry[1]]);
+                    values.forEach(entry => {
+                        let color = entry.acceleration > 0.4 ? 'red' : 'blue';
+                        realTimeData.addRow([entry.time, entry.acceleration, color]);
                     });
-
-                    options.series[0].color = colors.includes('red') ? 'red' : 'blue';
 
                     realTimeChart.draw(realTimeData, options);
                 });
@@ -164,32 +169,23 @@
                 .startAt(startTimestamp)
                 .endAt(endTimestamp)
                 .once('value', snapshot => {
-                    if (!snapshot.exists()) {
-                        alert("No data found for this date and time range.");
-                        return;
-                    }
-
-                    let historicalValues = [];
-                    let colors = [];
-
+                    let values = [];
                     snapshot.forEach(child => {
                         let val = child.val();
-                        let time = convertToIST(val.timestamp);
-                        historicalValues.push([time, val.acceleration_g]);
-                        colors.push(val.acceleration_g > 0.4 ? 'red' : 'blue');
+                        values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
                     });
 
-                    historicalValues.sort((a, b) => a[0] - b[0]);
+                    values.sort((a, b) => a.time - b.time);
 
                     historyData = new google.visualization.DataTable();
                     historyData.addColumn('datetime', 'Time (IST)');
                     historyData.addColumn('number', 'Acceleration (g)');
+                    historyData.addColumn({ type: 'string', role: 'style' });
 
-                    historicalValues.forEach((entry, index) => {
-                        historyData.addRow([entry[0], entry[1]]);
+                    values.forEach(entry => {
+                        let color = entry.acceleration > 0.4 ? 'red' : 'blue';
+                        historyData.addRow([entry.time, entry.acceleration, color]);
                     });
-
-                    options.series[0].color = colors.includes('red') ? 'red' : 'blue';
 
                     historyChart.draw(historyData, options);
                 });
