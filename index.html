@@ -45,13 +45,18 @@
         #suddenAccelerationHistory th {
             background-color: #f2f2f2;
         }
+        #alertMessage {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
     </style>
 </head>
 <body>
 
     <h2>Real-time Acceleration Data</h2>
     <h3>Current Acceleration: <span id="currentAcceleration">--</span> g</h3>
-    <p id="alertMessage" style="color: red; font-weight: bold;"></p>
+    <p id="alertMessage">⚠️ Sudden Acceleration Detected!</p>
 
     <h3>Real-time Acceleration Graph (IST) - Last 24 Hours</h3>
     <div id="chart_div" class="chart-container"></div>
@@ -144,8 +149,30 @@
                     });
 
                     values.sort((a, b) => a.time - b.time);
-                    realTimeData.addRows(values.map(entry => [entry.time, entry.acceleration, entry.acceleration > 0.4 ? 'color: red' : 'color: blue']));
+                    realTimeData = new google.visualization.DataTable();
+                    realTimeData.addColumn('datetime', 'Time (IST)');
+                    realTimeData.addColumn('number', 'Acceleration (g)');
+                    realTimeData.addColumn({ type: 'string', role: 'style' });
+
+                    values.forEach(entry => {
+                        realTimeData.addRow([entry.time, entry.acceleration, entry.acceleration > 0.4 ? 'color: red' : 'color: blue']);
+                    });
+
                     realTimeChart.draw(realTimeData, options);
+
+                    // Update current acceleration
+                    if (values.length > 0) {
+                        let latest = values[values.length - 1];
+                        document.getElementById('currentAcceleration').innerText = latest.acceleration.toFixed(3);
+
+                        // Show warning for sudden acceleration
+                        if (latest.acceleration > 0.4) {
+                            document.getElementById('alertMessage').style.display = 'block';
+                            setTimeout(() => {
+                                document.getElementById('alertMessage').style.display = 'none';
+                            }, 3000);
+                        }
+                    }
                 });
         }
 
@@ -207,6 +234,24 @@
                         }
                     });
                 });
+        }
+
+        function downloadCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Time (IST),Acceleration (g)\n";
+
+            historyData.getFilteredRows([]).forEach(row => {
+                let time = realTimeData.getValue(row, 0).toLocaleString();
+                let acceleration = realTimeData.getValue(row, 1);
+                csvContent += `${time},${acceleration}\n`;
+            });
+
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "acceleration_data.csv");
+            document.body.appendChild(link);
+            link.click();
         }
     </script>
 </body>
