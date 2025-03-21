@@ -36,7 +36,7 @@
 
     <h2>Real-time Acceleration Data</h2>
     <h3>Current Acceleration: <span id="currentAcceleration">--</span> g</h3>
-    <p id="notification" style="color: red; font-weight: bold;"></p>
+    <p id="alertMessage" style="color: red; font-weight: bold;"></p> <!-- Notification -->
 
     <h3>Real-time Acceleration Graph (IST) - Last 24 Hours</h3>
     <div id="chart_div" class="chart-container"></div>
@@ -71,7 +71,7 @@
         google.charts.load('current', { 'packages': ['corechart', 'line'] });
         google.charts.setOnLoadCallback(drawCharts);
 
-        let realTimeChart, historyChart, realTimeData, historyData, options;
+        let realTimeChart, historyChart, realTimeData, historyData, options, historicalValues = [];
 
         // Convert to IST
         function convertToIST(timestamp) {
@@ -84,12 +84,12 @@
             realTimeData = new google.visualization.DataTable();
             realTimeData.addColumn('datetime', 'Time (IST)');
             realTimeData.addColumn('number', 'Acceleration (g)');
-            realTimeData.addColumn({ type: 'string', role: 'style' });
+            realTimeData.addColumn({ type: 'string', role: 'style' }); // Style column
 
             historyData = new google.visualization.DataTable();
             historyData.addColumn('datetime', 'Time (IST)');
             historyData.addColumn('number', 'Acceleration (g)');
-            historyData.addColumn({ type: 'string', role: 'style' });
+            historyData.addColumn({ type: 'string', role: 'style' }); // Style column
 
             options = {
                 title: 'Acceleration Data',
@@ -124,16 +124,11 @@
                     });
 
                     values.sort((a, b) => a.time - b.time);
+
                     if (values.length > 0) {
                         let latestAcceleration = values[values.length - 1].acceleration;
                         document.getElementById("currentAcceleration").innerText = latestAcceleration.toFixed(3);
-                        
-                        // Display notification if acceleration > 0.4g
-                        if (latestAcceleration > 0.4) {
-                            document.getElementById("notification").innerText = "Sudden acceleration detected!";
-                        } else {
-                            document.getElementById("notification").innerText = "";
-                        }
+                        document.getElementById("alertMessage").innerText = latestAcceleration > 0.4 ? "Sudden acceleration detected!" : "";
                     }
 
                     realTimeData = new google.visualization.DataTable();
@@ -142,7 +137,7 @@
                     realTimeData.addColumn({ type: 'string', role: 'style' });
 
                     values.forEach(entry => {
-                        let color = entry.acceleration > 0.4 ? 'red' : 'blue';
+                        let color = entry.acceleration > 0.4 ? 'color: red' : 'color: blue';
                         realTimeData.addRow([entry.time, entry.acceleration, color]);
                     });
 
@@ -169,22 +164,20 @@
                 .startAt(startTimestamp)
                 .endAt(endTimestamp)
                 .once('value', snapshot => {
-                    let values = [];
-                    snapshot.forEach(child => {
-                        let val = child.val();
-                        values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
-                    });
-
-                    values.sort((a, b) => a.time - b.time);
+                    if (!snapshot.exists()) {
+                        alert("No data found for this date and time range.");
+                        return;
+                    }
 
                     historyData = new google.visualization.DataTable();
                     historyData.addColumn('datetime', 'Time (IST)');
                     historyData.addColumn('number', 'Acceleration (g)');
                     historyData.addColumn({ type: 'string', role: 'style' });
 
-                    values.forEach(entry => {
-                        let color = entry.acceleration > 0.4 ? 'red' : 'blue';
-                        historyData.addRow([entry.time, entry.acceleration, color]);
+                    snapshot.forEach(child => {
+                        let val = child.val();
+                        let color = val.acceleration_g > 0.4 ? 'color: red' : 'color: blue';
+                        historyData.addRow([convertToIST(val.timestamp), val.acceleration_g, color]);
                     });
 
                     historyChart.draw(historyData, options);
