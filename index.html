@@ -45,13 +45,17 @@
         #suddenAccelerationHistory th {
             background-color: #f2f2f2;
         }
+        #alertMessage {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
     <h2>Real-time Acceleration Data</h2>
     <h3>Current Acceleration: <span id="currentAcceleration">--</span> g</h3>
-    <p id="alertMessage" style="color: red; font-weight: bold;"></p>
+    <p id="alertMessage"></p>
 
     <h3>Real-time Acceleration Graph (IST) - Last 24 Hours</h3>
     <div id="chart_div" class="chart-container"></div>
@@ -95,6 +99,7 @@
         google.charts.setOnLoadCallback(drawCharts);
 
         let realTimeChart, historyChart, realTimeData, historyData, options;
+        let alertTimeout;
 
         function convertToIST(timestamp) {
             let date = new Date(timestamp * 1000);
@@ -107,11 +112,6 @@
             realTimeData.addColumn('number', 'Acceleration (g)');
             realTimeData.addColumn({ type: 'string', role: 'style' });
 
-            historyData = new google.visualization.DataTable();
-            historyData.addColumn('datetime', 'Time (IST)');
-            historyData.addColumn('number', 'Acceleration (g)');
-            historyData.addColumn({ type: 'string', role: 'style' });
-
             options = {
                 title: 'Acceleration Data',
                 curveType: 'function',
@@ -122,8 +122,6 @@
             };
 
             realTimeChart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            historyChart = new google.visualization.LineChart(document.getElementById('history_chart_div'));
-
             fetchRealTimeData();
         }
 
@@ -135,24 +133,46 @@
                 .orderByChild('timestamp')
                 .startAt(past24Hours)
                 .on('value', snapshot => {
-                    let values = [];
+                    realTimeData = new google.visualization.DataTable();
+                    realTimeData.addColumn('datetime', 'Time (IST)');
+                    realTimeData.addColumn('number', 'Acceleration (g)');
+                    realTimeData.addColumn({ type: 'string', role: 'style' });
+
+                    let latestAcceleration = "--";
+                    let alertMessage = "";
+
                     snapshot.forEach(child => {
                         let val = child.val();
-                        if (val.timestamp && val.acceleration_g) {
-                            values.push({ time: convertToIST(val.timestamp), acceleration: val.acceleration_g });
+                        let time = convertToIST(val.timestamp);
+                        let acceleration = val.acceleration_g;
+                        let color = acceleration > 0.4 ? 'color: red' : 'color: blue';
+
+                        realTimeData.addRow([time, acceleration, color]);
+
+                        latestAcceleration = acceleration.toFixed(3);
+                        if (acceleration > 0.4) {
+                            alertMessage = "⚠️ Sudden Acceleration Detected!";
+                            showTemporaryAlert(alertMessage);
                         }
                     });
 
-                    values.sort((a, b) => a.time - b.time);
-                    realTimeData.addRows(values.map(entry => [entry.time, entry.acceleration, entry.acceleration > 0.4 ? 'color: red' : 'color: blue']));
+                    document.getElementById("currentAcceleration").innerText = latestAcceleration;
                     realTimeChart.draw(realTimeData, options);
                 });
         }
 
+        function showTemporaryAlert(message) {
+            clearTimeout(alertTimeout);
+            document.getElementById("alertMessage").innerText = message;
+            alertTimeout = setTimeout(() => {
+                document.getElementById("alertMessage").innerText = "";
+            }, 3000);
+        }
+
         function loadHistoricalData() {
-            let date = document.getElementById('datePicker').value;
-            let start = document.getElementById('startTime').value;
-            let end = document.getElementById('endTime').value;
+            let date = document.getElementById("datePicker").value;
+            let start = document.getElementById("startTime").value;
+            let end = document.getElementById("endTime").value;
 
             if (!date || !start || !end) {
                 alert("Select a valid date and time range.");
@@ -177,35 +197,8 @@
                         historyData.addRow([convertToIST(val.timestamp), val.acceleration_g, val.acceleration_g > 0.4 ? 'color: red' : 'color: blue']);
                     });
 
+                    historyChart = new google.visualization.LineChart(document.getElementById('history_chart_div'));
                     historyChart.draw(historyData, options);
-                });
-        }
-
-        function loadWarningHistory() {
-            let selectedDate = document.getElementById("warningDatePicker").value;
-            if (!selectedDate) {
-                alert("Select a valid date.");
-                return;
-            }
-
-            let startTimestamp = new Date(`${selectedDate}T00:00:00+05:30`).getTime() / 1000;
-            let endTimestamp = new Date(`${selectedDate}T23:59:59+05:30`).getTime() / 1000;
-
-            db.ref('/acceleration_data')
-                .orderByChild('timestamp')
-                .startAt(startTimestamp)
-                .endAt(endTimestamp)
-                .once('value', snapshot => {
-                    let table = document.getElementById("suddenAccelerationHistory");
-                    table.innerHTML = `<tr><th>Time (IST)</th><th>Acceleration (g)</th></tr>`;
-                    snapshot.forEach(child => {
-                        let val = child.val();
-                        if (val.acceleration_g > 0.4) {
-                            let row = table.insertRow();
-                            row.insertCell(0).innerText = convertToIST(val.timestamp).toLocaleString();
-                            row.insertCell(1).innerText = val.acceleration_g.toFixed(3);
-                        }
-                    });
                 });
         }
     </script>
