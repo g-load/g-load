@@ -237,14 +237,17 @@
         }
 
         function downloadCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Time (IST),Acceleration (g)\n";
+            if (!historyData || historyData.getNumberOfRows() === 0) {
+                alert("No historical data available to download.");
+                return;
+            }
 
-            historyData.getFilteredRows([]).forEach(row => {
-                let time = realTimeData.getValue(row, 0).toLocaleString();
-                let acceleration = realTimeData.getValue(row, 1);
+            let csvContent = "data:text/csv;charset=utf-8,Time (IST),Acceleration (g)\n";
+            for (let i = 0; i < historyData.getNumberOfRows(); i++) {
+                let time = historyData.getValue(i, 0).toLocaleString();
+                let acceleration = historyData.getValue(i, 1);
                 csvContent += `${time},${acceleration}\n`;
-            });
+            }
 
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
@@ -252,6 +255,7 @@
             link.setAttribute("download", "acceleration_data.csv");
             document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
